@@ -1,54 +1,38 @@
-// src/workers/notifyWorker.js
 const axios = require('axios');
 const { Schedule, User } = require('../models');
-const { Op } = require('sequelize');
+const { processJobs } = require('./scheduleQueue');
 
 const EXPO_PUSH_URL = 'https://exp.host/--/api/v2/push/send';
 
-// 1분마다 실행
+/**
+ * 큐에서 일정 작업 가져와 처리
+ */
 function startNotifyWorker() {
-  setInterval(async () => {
-    try {
-      console.log('일정 체크 중...');
+  processJobs(async (job) => {
+    if (job.type !== 'schedule') return;
 
-      const now = new Date();
+    const { scheduleData, userId } = job.payload;
 
-      // 알림 안 보낸 일정 조회
-      const schedules = await Schedule.findAll({
-        where: {
-          schedule_time: {
-            [Op.lte]: now,
-          },
-          notified: false,
-        },
-        include: [{ model: User }],
-      });
+    // 1) DB 저장
+    const schedule = await Schedule.create({ ...scheduleData, userId });
 
-      for (const schedule of schedules) {
-        const user = schedule.User;
-
-        if (!user || !user.expo_push_token) continue;
-
-        // Expo 푸시 발송
+    // 2) 푸시 알림 발송
+    const user = await User.findByPk(userId);
+    if (user && user.expo_push_token) {
+      try {
         await axios.post(EXPO_PUSH_URL, {
           to: user.expo_push_token,
           sound: 'default',
-          title: '📅 엘더톡 일정 알림',
+          title: '엘더톡 일정 알림',
           body: `${schedule.title} 일정이 있어요.`,
         });
-
-        // notified true 처리
-        schedule.notified = true;
-        await schedule.save();
-
-        console.log(`알림 발송 완료 (scheduleId: ${schedule.id})`);
+      } catch (err) {
+        console.error('푸시 발송 실패:', err.message);
       }
-    } catch (err) {
-      console.error('notifyWorker 오류:', err.message);
     }
-  }, 60 * 1000); // 1분
+
+    console.log(`큐 작업 완료 (scheduleId: ${schedule.id})`);
+  });
 }
 
-module.exports = {
-  startNotifyWorker,
-};
+module.exports = { startNotifyWorker };

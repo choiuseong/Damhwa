@@ -22,7 +22,7 @@ sequelize.authenticate()
   .then(() => {
     // 워커 시작 (DB 연결 후 실행해야 안전)
     startNotifyWorker();
-    console.log('🔔 Notify Worker 시작');
+    console.log('Notify Worker 시작');
 
     server.listen(PORT, () => {
       console.log(`Server running on port ${PORT}`);

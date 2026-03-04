@@ -41,12 +41,10 @@ export default function Home() {
       </TouchableOpacity>
 
       {/* 기록, 일정 버튼 */}
-      <TouchableOpacity
-        style={styles.smallButton}
-        onPress={() => router.push("/record")}
-      >
-        <Text style={styles.smallButtonText}>기록</Text>
-      </TouchableOpacity>
+      <View style={styles.rowButtons}>
+        <TouchableOpacity style={styles.smallButton} onPress={goRecordScreen}>
+          <Text style={styles.smallButtonText}>기록</Text>
+        </TouchableOpacity>
 
         <TouchableOpacity style={styles.smallButton} onPress={goScheduleScreen}>
           <Text style={styles.smallButtonText}>일정</Text>

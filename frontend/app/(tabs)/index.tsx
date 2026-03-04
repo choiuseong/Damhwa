@@ -1,98 +1,167 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
+import { Ionicons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
+import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
-import { HelloWave } from '@/components/hello-wave';
-import ParallaxScrollView from '@/components/parallax-scroll-view';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Link } from 'expo-router';
+export default function Home() {
+  const router = useRouter();
 
-export default function HomeScreen() {
+  const goVoiceScreen = () => {
+    router.push("/voice"); // app/voice/index.tsx 로 이동
+  };
+
+  const goRecordScreen = () => {
+    router.push("/(tabs)/record");
+  };
+
+  const goScheduleScreen = () => {
+    router.push("/(tabs)/schedule");
+  };
+
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <Link href="/modal">
-          <Link.Trigger>
-            <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-          </Link.Trigger>
-          <Link.Preview />
-          <Link.Menu>
-            <Link.MenuAction title="Action" icon="cube" onPress={() => alert('Action pressed')} />
-            <Link.MenuAction
-              title="Share"
-              icon="square.and.arrow.up"
-              onPress={() => alert('Share pressed')}
-            />
-            <Link.Menu title="More" icon="ellipsis">
-              <Link.MenuAction
-                title="Delete"
-                icon="trash"
-                destructive
-                onPress={() => alert('Delete pressed')}
-              />
-            </Link.Menu>
-          </Link.Menu>
-        </Link>
+    <View style={styles.container}>
+      {/* 상단 헤더 */}
+      <Text style={styles.header}>피드</Text>
 
-        <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+      {/* 구분선 */}
+      <View style={styles.divider} />
+
+      {/* 오늘의 이야기를 들려주세요 */}
+      <View style={styles.talkRow}>
+        <Ionicons
+          name="chatbubble-ellipses-outline"
+          size={20}
+          color="#C07F5C"
+        />
+        <Text style={styles.talkText}>오늘의 이야기를 들려주세요!</Text>
+      </View>
+
+      {/* 큰 버튼 - 음성대화 */}
+      <TouchableOpacity style={styles.bigButton} onPress={goVoiceScreen}>
+        <Text style={styles.bigButtonText}>음성대화</Text>
+      </TouchableOpacity>
+
+      {/* 기록, 일정 버튼 */}
+      <TouchableOpacity
+        style={styles.smallButton}
+        onPress={() => router.push("/record")}
+      >
+        <Text style={styles.smallButtonText}>기록</Text>
+      </TouchableOpacity>
+
+        <TouchableOpacity style={styles.smallButton} onPress={goScheduleScreen}>
+          <Text style={styles.smallButtonText}>일정</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* 알림 박스 */}
+      <View style={styles.alertBox}>
+        <Ionicons name="notifications-outline" size={20} color="#B36A3C" />
+        <Text style={styles.alertText}>1개의 알림이 있어요.</Text>
+      </View>
+
+      {/* 추천 박스 */}
+      <View style={styles.recommendBox}>
+        <Text style={styles.recommendTitle}>순희님을 위한 추천</Text>
+        <Text style={styles.recommendDesc}>
+          전어회를 좋아하는 황순희님!{"\n"}지금이 철이네요~
+        </Text>
+        <Text style={styles.more}>더보기</Text>
+      </View>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  titleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
+  container: {
+    flex: 1,
+    backgroundColor: "#fff",
+    paddingHorizontal: 24,
+    paddingTop: 60,
   },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
+  header: {
+    fontSize: 26,
+    fontWeight: "700",
   },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
+  divider: {
+    height: 1,
+    backgroundColor: "#E2E2E2",
+    marginVertical: 20,
+  },
+  talkRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 18,
+  },
+  talkText: {
+    marginLeft: 6,
+    fontSize: 16,
+    color: "#C07F5C",
+    fontWeight: "600",
+  },
+  bigButton: {
+    paddingVertical: 26,
+    borderRadius: 20,
+    alignItems: "center",
+    backgroundColor: "#B36A3C",
+    marginBottom: 16,
+  },
+  bigButtonText: {
+    color: "#fff",
+    fontSize: 24,
+    fontWeight: "700",
+  },
+  rowButtons: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 18,
+  },
+  smallButton: {
+    flex: 1,
+    paddingVertical: 22,
+    borderRadius: 20,
+    alignItems: "center",
+    backgroundColor: "#B36A3C",
+    marginHorizontal: 4,
+  },
+  smallButtonText: {
+    color: "#fff",
+    fontSize: 20,
+    fontWeight: "700",
+  },
+  alertBox: {
+    flexDirection: "row",
+    backgroundColor: "#FFEFD7",
+    padding: 15,
+    borderRadius: 16,
+    alignItems: "center",
+    marginBottom: 26,
+  },
+  alertText: {
+    marginLeft: 10,
+    fontSize: 15,
+    color: "#B36A3C",
+    fontWeight: "600",
+  },
+  recommendBox: {
+    backgroundColor: "#FAFAFA",
+    padding: 16,
+    borderRadius: 16,
+  },
+  recommendTitle: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#7DA05B",
+    marginBottom: 4,
+  },
+  recommendDesc: {
+    fontSize: 14,
+    color: "#666",
+    marginBottom: 6,
+    lineHeight: 20,
+  },
+  more: {
+    textAlign: "right",
+    color: "#B39E7A",
+    fontSize: 12,
   },
 });

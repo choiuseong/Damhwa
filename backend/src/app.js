@@ -1,4 +1,5 @@
 // src/app.js
+require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const morgan = require('morgan');
@@ -17,7 +18,7 @@ app.use(morgan('dev'));
 
 // 헬스체크
 app.get('/', (req, res) => {
-  res.json({ message: 'ElderTalk Server Running 🚀' });
+  res.json({ message: 'ElderTalk Server Running' });
 });
 
 // 라우터 연결

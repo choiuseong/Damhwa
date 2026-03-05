@@ -1,0 +1,2 @@
+# Backend 환경 변수만 무시
+backend/.env

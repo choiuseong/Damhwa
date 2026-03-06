@@ -1,10 +1,8 @@
-// openai.js
-const { Configuration, OpenAIApi } = require('openai');
+require('dotenv').config();
+const OpenAI = require('openai');
 
-const configuration = new Configuration({
+const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
-
-const openai = new OpenAIApi(configuration);
 
 module.exports = openai;

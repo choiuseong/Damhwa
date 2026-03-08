@@ -1,4 +1,3 @@
-// socket.js
 const { Server } = require('socket.io');
 
 let io;
@@ -11,13 +10,7 @@ function initSocket(server) {
     },
   });
 
-  io.on('connection', (socket) => {
-    console.log('새 소켓 연결:', socket.id);
-
-    socket.on('disconnect', () => {
-      console.log('소켓 종료:', socket.id);
-    });
-  });
+  return io;
 }
 
 function getIo() {

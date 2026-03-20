@@ -1,3 +1,4 @@
+// src/modules/chat/chatService.js
 const { Chat, sequelize } = require('../../models');
 const openai = require('../../config/openai');
 
@@ -5,11 +6,9 @@ const { parseSchedule } = require('../schedule/parser/scheduleParser');
 const scheduleService = require('../schedule/scheduleService');
 
 exports.processMessage = async (userId, message) => {
-
   const t = await sequelize.transaction();
 
   try {
-
     // 1️⃣ 사용자 메시지 저장
     await Chat.create(
       { user_id: userId, role: 'elder', content: message },
@@ -18,17 +17,19 @@ exports.processMessage = async (userId, message) => {
 
     // 2️⃣ 일정 파싱
     const schedule = parseSchedule(message);
-
-    if (schedule) {
+    if (schedule && schedule.title && schedule.schedule_time) {
+      // 유효한 일정만 등록
       await scheduleService.createSchedule(schedule, userId);
+    } else {
+      console.log("스케줄 데이터가 없거나 불완전해서 등록하지 않음:", schedule);
     }
 
-    // 3️⃣ 최근 대화 가져오기
+    // 3️⃣ 최근 대화 가져오기 (최대 10개)
     const history = await Chat.findAll({
       where: { user_id: userId },
       order: [['created_at', 'DESC']],
       limit: 10,
-      transaction: t,
+      transaction: t
     });
 
     // 4️⃣ GPT 메시지 구성
@@ -37,7 +38,6 @@ exports.processMessage = async (userId, message) => {
         role: "system",
         content: `
 당신은 노인을 위한 따뜻한 AI 대화 친구입니다.
-
 대화 규칙
 - 항상 공손하게 말하세요
 - 쉬운 단어를 사용하세요
@@ -49,7 +49,7 @@ exports.processMessage = async (userId, message) => {
       },
       ...history.reverse().map((c) => ({
         role: c.role === 'elder' ? 'user' : 'assistant',
-        content: c.content,
+        content: c.content
       })),
       { role: "user", content: message }
     ];
@@ -71,11 +71,11 @@ exports.processMessage = async (userId, message) => {
     );
 
     await t.commit();
-
     return aiReply;
 
   } catch (err) {
     await t.rollback();
+    console.error("processMessage 에러:", err);
     throw err;
   }
 };

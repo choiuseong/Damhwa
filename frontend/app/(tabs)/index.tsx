@@ -6,7 +6,7 @@ export default function Home() {
   const router = useRouter();
 
   const goVoiceScreen = () => {
-    router.push("/voice"); // app/voice/index.tsx 로 이동
+    router.push("/voice/voice"); // app/voice/index.tsx 로 이동
   };
 
   const goRecordScreen = () => {

@@ -21,7 +21,6 @@ exports.processMessage = async (userId, message) => {
       // 유효한 일정만 등록
       await scheduleService.createSchedule(schedule, userId);
     } else {
-      console.log("스케줄 데이터가 없거나 불완전해서 등록하지 않음:", schedule);
     }
 
     // 3️⃣ 최근 대화 가져오기 (최대 10개)

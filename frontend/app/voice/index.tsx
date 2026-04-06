@@ -1,4 +1,3 @@
-// app/voice/index.tsx
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import React from "react";
@@ -7,31 +6,55 @@ import {
   StyleSheet,
   Text,
   TouchableOpacity,
+  useWindowDimensions,
   View,
 } from "react-native";
 
 export default function VoiceScreen() {
   const router = useRouter();
+  const { width } = useWindowDimensions();
+
+  // 공통 헤더 규격 (모든 화면 동일 적용)
+  const headerFontSize = width * 0.05; // 약 20px
+  const headerIconSize = width * 0.08; // 약 32px
+
+  // 본문 및 버튼 반응형 수치
+  const messageFontSize = width * 0.11;
+  const messageLineHeight = messageFontSize * 1.3;
+  const buttonWidth = width * 0.8;
+  const buttonFontSize = width * 0.06;
 
   const handleStart = () => {
     router.push("/voice/talk");
-
-    // router.push("/voice/talk");
   };
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* 상단 헤더 */}
+      {/* 고정 헤더 영역 (speak, talk와 동일하게 맞춤) */}
       <View style={styles.headerRow}>
-        <Text style={styles.headerTitle}>음성대화</Text>
-        <TouchableOpacity onPress={() => router.replace("/(tabs)")}>
-          <Ionicons name="home-outline" size={30} color="#222" />
+        <Text style={[styles.headerTitle, { fontSize: headerFontSize }]}>
+          음성대화
+        </Text>
+        <TouchableOpacity
+          onPress={() => router.replace("/(tabs)")}
+          hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
+        >
+          <Ionicons name="home-outline" size={headerIconSize} color="#222" />
         </TouchableOpacity>
       </View>
 
       {/* 가운데 문구 */}
       <View style={styles.center}>
-        <Text style={styles.message}>
+        <Text
+          style={[
+            styles.message,
+            {
+              fontSize: messageFontSize,
+              lineHeight: messageLineHeight,
+              paddingLeft: width * 0.05,
+            },
+          ]}
+        >
           안녕하세요.{`\n`}
           당신의 하루를{`\n`}
           다마와 함께{`\n`}
@@ -41,8 +64,14 @@ export default function VoiceScreen() {
 
       {/* 하단 버튼 */}
       <View style={styles.bottom}>
-        <TouchableOpacity style={styles.button} onPress={handleStart}>
-          <Text style={styles.buttonText}>시작하기</Text>
+        <TouchableOpacity
+          style={[styles.button, { width: buttonWidth }]}
+          onPress={handleStart}
+          activeOpacity={0.8}
+        >
+          <Text style={[styles.buttonText, { fontSize: buttonFontSize }]}>
+            시작하기
+          </Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>
@@ -55,57 +84,56 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#FFF",
-    paddingHorizontal: 24, // 좌우 여백 조금 더
-    paddingTop: 60, // 위쪽 여백도 살짝
+    // 화면 전체 좌우 여백을 8%로 통일하여 헤더 위치 고정
+    paddingHorizontal: "8%",
   },
 
   headerRow: {
-    marginTop: 4,
-    paddingHorizontal: 4, // 헤더도 살짝 안쪽으로
+    // 헤더 높이와 내부 여백을 고정하여 화면 전환 시 흔들림 방지
+    height: 60,
+    marginTop: 10,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginBottom: 20,
+    paddingHorizontal: 4,
   },
 
   headerTitle: {
-    fontSize: 18,
     color: "#555",
+    fontWeight: "600",
   },
 
   center: {
     flex: 1,
     justifyContent: "center",
-    alignItems: "center",
+    alignItems: "flex-start",
   },
 
   message: {
-    fontSize: 40, // 살짝 줄여서 덜 깨지게
-    lineHeight: 52,
-    marginBottom: 32, // 아래 여백 여유 있게
     fontWeight: "700",
     color: "#111",
-    marginLeft: -130, // ← 중앙보다 20px 왼쪽으로 이동 (원하는 만큼 조절)
   },
 
   bottom: {
     alignItems: "center",
-    marginBottom: 56, // 하단에서 약간 위로 띄우기
+    marginBottom: "15%",
   },
 
   button: {
-    minWidth: 240, // 버튼 더 넓게
-    paddingHorizontal: 36,
-    paddingVertical: 16, // 세로도 키워서 큼직하게
-    borderRadius: 20,
+    paddingVertical: 20,
+    borderRadius: 25,
     backgroundColor: BUTTON_COLOR,
     alignItems: "center",
     justifyContent: "center",
+    elevation: 4,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
   },
 
   buttonText: {
     color: "#FFF",
-    fontSize: 18, // 글자도 살짝 키움
-    fontWeight: "600",
+    fontWeight: "800",
   },
 });

@@ -16,7 +16,7 @@ export default function Home() {
   // 폰 기종 반응형 수치 계산 (어르신 맞춤형)
   const headerFontSize = width * 0.08; // '피드' 타이틀 (약 32px)
   const subTextSize = width * 0.05; // '오늘의 이야기...' (약 20px)
-  const bigButtonFontSize = width * 0.08; // '음성대화' (약 32px)
+  const bigButtonFontSize = width * 0.1; // '음성대화' (약 32px)
   const smallButtonFontSize = width * 0.06; // '기록/일정' (약 24px)
 
   return (
@@ -44,9 +44,9 @@ export default function Home() {
         </Text>
       </View>
 
-      {/* 큰 버튼 - 음성대화 (가장 강조) */}
+      {/* 큰 버튼 - 음성대화 */}
       <TouchableOpacity
-        style={styles.bigButton}
+        style={[styles.bigButton, { paddingVertical: width * 0.12 }]}
         onPress={() => router.push("/voice")}
         activeOpacity={0.8}
       >
@@ -55,7 +55,7 @@ export default function Home() {
         </Text>
       </TouchableOpacity>
 
-      {/* 기록, 일정 버튼 (가로 배치) */}
+      {/* 기록, 일정 버튼 */}
       <View style={styles.rowButtons}>
         <TouchableOpacity
           style={styles.smallButton}
@@ -125,7 +125,7 @@ const styles = StyleSheet.create({
   contentContainer: {
     paddingHorizontal: "6%",
     paddingTop: 60,
-    paddingBottom: 40, // 하단 여백 넉넉히
+    paddingBottom: 40, // 하단 여백
   },
   headerWrapper: {
     marginBottom: 10,
@@ -150,20 +150,16 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
   bigButton: {
-    paddingVertical: 32, // 버튼의 세로 두께(높이)
-    borderRadius: 24,
+    width: "100%", //
+    borderRadius: 28, //
     alignItems: "center",
+    justifyContent: "center",
     backgroundColor: "#B36A3C",
     marginBottom: 16,
-    elevation: 4, // 안드로이드 그림자
-    shadowColor: "#000", // iOS 그림자
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 5,
   },
   bigButtonText: {
     color: "#fff",
-    fontWeight: "800",
+    fontWeight: "900",
   },
   rowButtons: {
     flexDirection: "row",
@@ -172,7 +168,7 @@ const styles = StyleSheet.create({
   },
   smallButton: {
     flex: 1,
-    paddingVertical: 26, // 높이 키움
+    paddingVertical: 26,
     borderRadius: 24,
     alignItems: "center",
     backgroundColor: "#B36A3C",
@@ -212,7 +208,7 @@ const styles = StyleSheet.create({
   recommendDesc: {
     color: "#444",
     marginBottom: 10,
-    lineHeight: 26, // 줄간격 넓게
+    lineHeight: 26, // 줄간격 조절
     fontWeight: "500",
   },
   more: {

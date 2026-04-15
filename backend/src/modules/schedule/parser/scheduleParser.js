@@ -1,4 +1,4 @@
-const chrono = require('chrono-node').ko;
+const chrono = require('chrono-node');
 const OpenAI = require('openai');
 
 const openai = new OpenAI({

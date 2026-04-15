@@ -1,10 +1,25 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import {
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+  useWindowDimensions,
+} from "react-native";
 
 export default function Home() {
   const router = useRouter();
+  const { width } = useWindowDimensions();
 
+<<<<<<< HEAD
+  // 폰 기종 반응형 수치 계산 (어르신 맞춤형)
+  const headerFontSize = width * 0.08; // '피드' 타이틀 (약 32px)
+  const subTextSize = width * 0.05; // '오늘의 이야기...' (약 20px)
+  const bigButtonFontSize = width * 0.1; // '음성대화' (약 32px)
+  const smallButtonFontSize = width * 0.06; // '기록/일정' (약 24px)
+=======
   const goVoiceScreen = () => {
     router.push("/voice/voice"); // app/voice/index.tsx 로 이동
   };
@@ -16,11 +31,17 @@ export default function Home() {
   const goScheduleScreen = () => {
     router.push("/(tabs)/schedule");
   };
+>>>>>>> 333c1149bd81603cd5bb9680c6a6f063e587595d
 
   return (
-    <View style={styles.container}>
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={styles.contentContainer}
+    >
       {/* 상단 헤더 */}
-      <Text style={styles.header}>피드</Text>
+      <View style={styles.headerWrapper}>
+        <Text style={[styles.header, { fontSize: headerFontSize }]}>피드</Text>
+      </View>
 
       {/* 구분선 */}
       <View style={styles.divider} />
@@ -29,43 +50,84 @@ export default function Home() {
       <View style={styles.talkRow}>
         <Ionicons
           name="chatbubble-ellipses-outline"
-          size={20}
+          size={width * 0.06}
           color="#C07F5C"
         />
-        <Text style={styles.talkText}>오늘의 이야기를 들려주세요!</Text>
+        <Text style={[styles.talkText, { fontSize: subTextSize }]}>
+          오늘의 이야기를 들려주세요!
+        </Text>
       </View>
 
       {/* 큰 버튼 - 음성대화 */}
-      <TouchableOpacity style={styles.bigButton} onPress={goVoiceScreen}>
-        <Text style={styles.bigButtonText}>음성대화</Text>
+      <TouchableOpacity
+        style={[styles.bigButton, { paddingVertical: width * 0.12 }]}
+        onPress={() => router.push("/voice")}
+        activeOpacity={0.8}
+      >
+        <Text style={[styles.bigButtonText, { fontSize: bigButtonFontSize }]}>
+          음성대화
+        </Text>
       </TouchableOpacity>
 
       {/* 기록, 일정 버튼 */}
       <View style={styles.rowButtons}>
-        <TouchableOpacity style={styles.smallButton} onPress={goRecordScreen}>
-          <Text style={styles.smallButtonText}>기록</Text>
+        <TouchableOpacity
+          style={styles.smallButton}
+          onPress={() => router.push("/(tabs)/record")}
+        >
+          <Text
+            style={[styles.smallButtonText, { fontSize: smallButtonFontSize }]}
+          >
+            기록
+          </Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.smallButton} onPress={goScheduleScreen}>
-          <Text style={styles.smallButtonText}>일정</Text>
+        <TouchableOpacity
+          style={styles.smallButton}
+          onPress={() => router.push("/(tabs)/schedule")}
+        >
+          <Text
+            style={[styles.smallButtonText, { fontSize: smallButtonFontSize }]}
+          >
+            일정
+          </Text>
         </TouchableOpacity>
       </View>
 
       {/* 알림 박스 */}
       <View style={styles.alertBox}>
-        <Ionicons name="notifications-outline" size={20} color="#B36A3C" />
-        <Text style={styles.alertText}>1개의 알림이 있어요.</Text>
+        <Ionicons
+          name="notifications-outline"
+          size={width * 0.06}
+          color="#B36A3C"
+        />
+        <Text style={[styles.alertText, { fontSize: width * 0.045 }]}>
+          1개의 알림이 있어요.
+        </Text>
       </View>
 
-      {/* 추천 박스 */}
+      {/* 순희님을 위한 추천 (광고 전 정보 제공 섹션) */}
       <View style={styles.recommendBox}>
-        <Text style={styles.recommendTitle}>순희님을 위한 추천</Text>
-        <Text style={styles.recommendDesc}>
+        <Text style={[styles.recommendTitle, { fontSize: width * 0.05 }]}>
+          순희님을 위한 추천
+        </Text>
+        <Text style={[styles.recommendDesc, { fontSize: width * 0.045 }]}>
           전어회를 좋아하는 황순희님!{"\n"}지금이 철이네요~
         </Text>
-        <Text style={styles.more}>더보기</Text>
+        <TouchableOpacity>
+          <Text style={styles.more}>더보기</Text>
+        </TouchableOpacity>
       </View>
-    </View>
+
+      {/* 하단 광고/정보제공형 배너 공간 (이미지처럼 배치될 곳) */}
+      <View style={styles.adSpace}>
+        <View style={styles.adPlaceholder}>
+          <Text style={styles.adPlaceholderText}>
+            광고 및 정보제공 배너 영역
+          </Text>
+        </View>
+      </View>
+    </ScrollView>
   );
 }
 
@@ -73,93 +135,119 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#fff",
-    paddingHorizontal: 24,
+  },
+  contentContainer: {
+    paddingHorizontal: "6%",
     paddingTop: 60,
+    paddingBottom: 40, // 하단 여백
+  },
+  headerWrapper: {
+    marginBottom: 10,
   },
   header: {
-    fontSize: 26,
-    fontWeight: "700",
+    fontWeight: "800",
+    color: "#000",
   },
   divider: {
-    height: 1,
-    backgroundColor: "#E2E2E2",
-    marginVertical: 20,
+    height: 1.5,
+    backgroundColor: "#F0F0F0",
+    marginBottom: 24,
   },
   talkRow: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 18,
+    marginBottom: 16,
   },
   talkText: {
-    marginLeft: 6,
-    fontSize: 16,
+    marginLeft: 8,
     color: "#C07F5C",
-    fontWeight: "600",
+    fontWeight: "700",
   },
   bigButton: {
-    paddingVertical: 26,
-    borderRadius: 20,
+    width: "100%", //
+    borderRadius: 28, //
     alignItems: "center",
+    justifyContent: "center",
     backgroundColor: "#B36A3C",
     marginBottom: 16,
   },
   bigButtonText: {
     color: "#fff",
-    fontSize: 24,
-    fontWeight: "700",
+    fontWeight: "900",
   },
   rowButtons: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginBottom: 18,
+    marginBottom: 20,
   },
   smallButton: {
     flex: 1,
-    paddingVertical: 22,
-    borderRadius: 20,
+    paddingVertical: 26,
+    borderRadius: 24,
     alignItems: "center",
     backgroundColor: "#B36A3C",
-    marginHorizontal: 4,
+    marginHorizontal: 6,
+    elevation: 3,
   },
   smallButtonText: {
     color: "#fff",
-    fontSize: 20,
-    fontWeight: "700",
+    fontWeight: "800",
   },
   alertBox: {
     flexDirection: "row",
     backgroundColor: "#FFEFD7",
-    padding: 15,
-    borderRadius: 16,
+    padding: 18,
+    borderRadius: 20,
     alignItems: "center",
-    marginBottom: 26,
+    marginBottom: 20,
   },
   alertText: {
-    marginLeft: 10,
-    fontSize: 15,
+    marginLeft: 12,
     color: "#B36A3C",
-    fontWeight: "600",
+    fontWeight: "700",
   },
   recommendBox: {
-    backgroundColor: "#FAFAFA",
-    padding: 16,
-    borderRadius: 16,
+    backgroundColor: "#F9F9F9",
+    padding: 20,
+    borderRadius: 20,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: "#F0F0F0",
   },
   recommendTitle: {
-    fontSize: 16,
-    fontWeight: "700",
+    fontWeight: "800",
     color: "#7DA05B",
-    marginBottom: 4,
+    marginBottom: 8,
   },
   recommendDesc: {
-    fontSize: 14,
-    color: "#666",
-    marginBottom: 6,
-    lineHeight: 20,
+    color: "#444",
+    marginBottom: 10,
+    lineHeight: 26, // 줄간격 조절
+    fontWeight: "500",
   },
   more: {
     textAlign: "right",
     color: "#B39E7A",
-    fontSize: 12,
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  // 광고 영역 스타일
+  adSpace: {
+    marginTop: 10,
+    width: "100%",
+  },
+  adPlaceholder: {
+    backgroundColor: "#EEE",
+    height: 180, // 광고가 들어갈 높이 확보
+    borderRadius: 20,
+    justifyContent: "center",
+    alignItems: "center",
+    borderStyle: "dashed",
+    borderWidth: 1,
+    borderColor: "#CCC",
+  },
+  adPlaceholderText: {
+    color: "#999",
+    fontSize: 16,
   },
 });

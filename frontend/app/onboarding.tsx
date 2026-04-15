@@ -12,43 +12,46 @@ import {
   View,
 } from "react-native";
 
-const PAGES = [
-  {
-    id: 1,
-    lines: ["담소를", "나누어", "꽃을 피우다."],
-  },
+// 1. 페이지 데이터의 타입을 명확히 정의하여 오류 방지
+interface PageItem {
+  id: number;
+  lines: string[];
+  image?: any; // 5번 페이지용
+  images?: any[]; // 6번 페이지용
+}
+
+const PAGES: PageItem[] = [
+  { id: 1, lines: ["담소를", "나누어", "꽃을 피우다."] },
   {
     id: 2,
     lines: ["오늘 하루는", "어땠나요?", "마음의 소리를", "들려주세요."],
   },
-  {
-    id: 3,
-    lines: ["당신의 마음이", "머무는 곳에", "우리가 함께할게요."],
-  },
-  {
-    id: 4,
-    lines: ["-----","Dam", "hwa", "-----", "Story of you"] // 추가 페이지
-  },
+  { id: 3, lines: ["당신의 마음이", "머무는 곳에", "우리가 함께할게요."] },
+  { id: 4, lines: ["-----", "Dam", "hwa", "-----", "Story of you"] },
   {
     id: 5,
     lines: ["AI와 대화로"],
-    image: require("../assets/images/5-page.jpg"), // 추가 페이지 2
+    image: require("../assets/images/5-page.jpg"),
   },
   {
     id: 6,
-    lines: ["일정부터  (image1)", "(image2)  일상까지", "한번에!"],
+    lines: ["일정부터 (image1)", "(image2) 일상까지", "한번에!"],
     images: [
-      require("../assets/images/6-page-1.jpg"), // 달력 이미지
-      require("../assets/images/6-page-2.jpg"), // 산책 이미지
+      require("../assets/images/6-page-1.jpg"),
+      require("../assets/images/6-page-2.jpg"),
     ],
-  }
+  },
 ];
 
 export default function Onboarding() {
-  const { width } = useWindowDimensions();
+  const { width, height } = useWindowDimensions();
   const scrollX = useRef(new Animated.Value(0)).current;
-  const flatListRef = useRef<FlatList>(null);
+  const flatListRef = useRef<FlatList<PageItem>>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
+
+  // 반응형 수치: 기종 너비에 비례하도록 설정 (아이폰 SE ~ 프로맥스 모두 대응)
+  const responsiveFontSize = width * 0.11;
+  const responsiveLineHeight = responsiveFontSize * 1.3;
 
   const finishOnboarding = async () => {
     await AsyncStorage.setItem("onboardingDone", "true");
@@ -71,11 +74,11 @@ export default function Onboarding() {
             useNativeDriver: true,
             listener: (event: any) => {
               const index = Math.round(
-                event.nativeEvent.contentOffset.x / width
+                event.nativeEvent.contentOffset.x / width,
               );
               setCurrentIndex(index);
             },
-          }
+          },
         )}
         renderItem={({ item, index }) => {
           const inputRange = [
@@ -83,95 +86,123 @@ export default function Onboarding() {
             index * width,
             (index + 1) * width,
           ];
-
           const opacity = scrollX.interpolate({
             inputRange,
             outputRange: [0, 1, 0],
             extrapolate: "clamp",
           });
-
           const translateY = scrollX.interpolate({
             inputRange,
             outputRange: [40, 0, 40],
             extrapolate: "clamp",
           });
-
           const scale = scrollX.interpolate({
             inputRange,
             outputRange: [0.9, 1, 0.9],
             extrapolate: "clamp",
           });
 
+          const isPage4 = item.id === 4;
+          const isPage5 = item.id === 5;
+          const isPage6 = item.id === 6;
+
           return (
             <View
               style={[
                 styles.page,
                 { width },
-                // 4번 배경 색 변경
-                item.id === 4 && { backgroundColor: "#D7C999" },
-                // 5번 페이지는 위쪽으로 정렬
-                item.id === 5 && { justifyContent: "flex-start", paddingTop: 150 },
+                isPage4 && { backgroundColor: "#D7C999" },
+                isPage5 && {
+                  justifyContent: "flex-start",
+                  paddingTop: height * 0.18,
+                },
               ]}
             >
               <Animated.View
                 style={{
                   opacity,
                   transform: [{ translateY }, { scale }],
-                  // 4, 5번 페이지는 width 100% 적용
-                  width: [4, 5].includes(item.id) ? "100%" : undefined,
-                  alignItems: [5, 6].includes(item.id) ? "center" : undefined, // 5, 6번 페이지 콘텐츠 중앙 정렬
+                  width: "100%",
+                  alignItems: [4, 5, 6].includes(item.id)
+                    ? "center"
+                    : "flex-start",
                 }}
               >
                 {item.lines.map((line, idx) => {
-                  const isPage4 = item.id === 4;
-                  const isPage5 = item.id === 5;
-                  const isPage6 = item.id === 6;
-
-                  // 4페이지의 '-----'를 실선으로 렌더링
+                  // 4페이지 실선 구분선 처리
                   if (isPage4 && line === "-----") {
-                    return <View key={idx} style={styles.divider} />;
+                    return (
+                      <View
+                        key={idx}
+                        style={[styles.divider, { width: width * 0.6 }]}
+                      />
+                    );
                   }
+
+                  // 색상 로직 복구
+                  let textColor = styles.black;
+                  if (isPage5 || isPage6) textColor = styles.black;
+                  else if (isPage4) textColor = styles.red;
+                  else if (idx <= 1) textColor = styles.red;
 
                   const lineStyle = [
                     styles.text,
-                    // 5, 6페이지는 검정, 4페이지는 빨강, 나머지는 기본 규칙
-                    isPage5 || isPage6
-                      ? styles.black
-                      : isPage4 || idx <= 1
-                      ? styles.red
-                      : styles.black,
-                    (isPage4 || isPage5 || isPage6) && { fontWeight: "900" },
+                    {
+                      fontSize: responsiveFontSize,
+                      lineHeight: responsiveLineHeight,
+                    },
+                    textColor,
+                    (isPage4 || isPage5 || isPage6) && {
+                      fontWeight: "900" as any,
+                    },
                   ];
 
-                  // 6페이지는 텍스트와 이미지를 함께 렌더링
-                  if (isPage6) {
-                    if (line.includes("(image1)")) {
-                      return (
-                        <View key={idx} style={styles.inlineContainer}>
-                          <Text style={lineStyle}>일정부터  </Text>
-                          <Image source={item.images[0]} style={styles.page6Image} />
-                        </View>
-                      );
-                    }
-                    if (line.includes("(image2)")) {
-                      return (
-                        <View key={idx} style={styles.inlineContainer}>
-                          <Image source={item.images[1]} style={styles.page6Image} />
-                          <Text style={lineStyle}>  일상까지</Text>
-                        </View>
-                      );
-                    }
+                  // 6페이지 이미지 행 처리
+                  if (isPage6 && line.includes("(image1)")) {
+                    return (
+                      <View key={idx} style={styles.inlineContainer}>
+                        <Text style={lineStyle}>일정부터 </Text>
+                        <Image
+                          source={item.images?.[0]}
+                          style={styles.page6Image}
+                        />
+                      </View>
+                    );
+                  }
+                  if (isPage6 && line.includes("(image2)")) {
+                    return (
+                      <View key={idx} style={styles.inlineContainer}>
+                        <Image
+                          source={item.images?.[1]}
+                          style={styles.page6Image}
+                        />
+                        <Text style={lineStyle}> 일상까지</Text>
+                      </View>
+                    );
                   }
 
                   return (
-                    <Text key={idx} style={lineStyle}>
+                    <Text
+                      key={idx}
+                      style={[
+                        lineStyle,
+                        (isPage4 || isPage5) && { textAlign: "center" },
+                      ]}
+                    >
                       {line}
                     </Text>
                   );
                 })}
-                {/* 5번 페이지 이미지 렌더링 */}
-                {item.id === 5 && item.image && (
-                  <Image source={item.image} style={styles.page5Image} />
+
+                {/* 5페이지 메인 이미지 */}
+                {isPage5 && item.image && (
+                  <Image
+                    source={item.image}
+                    style={[
+                      styles.page5Image,
+                      { width: width * 0.7, height: width * 0.7 },
+                    ]}
+                  />
                 )}
               </Animated.View>
             </View>
@@ -179,7 +210,7 @@ export default function Onboarding() {
         }}
       />
 
-      {/* Dot indicator */}
+      {/* 인디케이터 */}
       <View style={styles.dotsWrapper}>
         {PAGES.map((_, idx) => (
           <View
@@ -204,48 +235,19 @@ export default function Onboarding() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#fff" },
-
-  page: {
-    justifyContent: "center",
-    paddingHorizontal: 30,
-  },
-
-  text: {
-    fontSize: 46,
-    fontWeight: "700",
-    marginBottom: 12,
-    lineHeight: 60,
-  },
-
+  page: { justifyContent: "center", paddingHorizontal: 30 },
+  text: { fontWeight: "700", marginBottom: 10 },
   red: { color: "#8B0000" },
   black: { color: "#000" },
-
-  divider: {
-    height: 2,
-    backgroundColor: '#8B0000', // 빨간색
-    marginVertical: 20,
-  },
-
-  page5Image: {
-    width: 300,
-    height: 300,
-    resizeMode: "contain",
-    marginTop: 60,
-  },
-
+  divider: { height: 2, backgroundColor: "#8B0000", marginVertical: 15 },
+  page5Image: { resizeMode: "contain", marginTop: 40 },
   inlineContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 12, // styles.text와 동일한 간격
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 10,
   },
-
-  page6Image: {
-    width: 60, // 이미지 크기 조절
-    height: 60, // 이미지 크기 조절
-    resizeMode: 'contain',
-  },
-
+  page6Image: { width: 50, height: 50, resizeMode: "contain" },
   dotsWrapper: {
     position: "absolute",
     bottom: 120,
@@ -253,7 +255,6 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "center",
   },
-
   dot: {
     width: 7,
     height: 7,
@@ -261,11 +262,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#CFCFCF",
     marginHorizontal: 4,
   },
-
-  dotActive: {
-    backgroundColor: "#000",
-  },
-
+  dotActive: { backgroundColor: "#000" },
   button: {
     position: "absolute",
     bottom: 40,
@@ -275,10 +272,5 @@ const styles = StyleSheet.create({
     borderRadius: 30,
     alignItems: "center",
   },
-
-  buttonText: {
-    color: "#fff",
-    fontSize: 18,
-    fontWeight: "600",
-  },
+  buttonText: { color: "#fff", fontSize: 18, fontWeight: "600" },
 });

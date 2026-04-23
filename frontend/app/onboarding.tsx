@@ -12,22 +12,19 @@ import {
   View,
 } from "react-native";
 
-// 1. 페이지 데이터의 타입을 명확히 정의하여 오류 방지
 interface PageItem {
   id: number;
   lines: string[];
-  image?: any; // 5번 페이지용
-  images?: any[]; // 6번 페이지용
+  image?: any;
+  images?: any[];
 }
 
+// 🎯 기존 1, 2, 3번을 삭제하고 4, 5, 6번만 남김
 const PAGES: PageItem[] = [
-  { id: 1, lines: ["담소를", "나누어", "꽃을 피우다."] },
-  {
-    id: 2,
-    lines: ["오늘 하루는", "어땠나요?", "마음의 소리를", "들려주세요."],
+  { 
+    id: 4, 
+    lines: ["-----", "Dam", "hwa", "-----", "Story of you"] 
   },
-  { id: 3, lines: ["당신의 마음이", "머무는 곳에", "우리가 함께할게요."] },
-  { id: 4, lines: ["-----", "Dam", "hwa", "-----", "Story of you"] },
   {
     id: 5,
     lines: ["AI와 대화로"],
@@ -49,14 +46,14 @@ export default function Onboarding() {
   const flatListRef = useRef<FlatList<PageItem>>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
 
-  // 반응형 수치: 기종 너비에 비례하도록 설정 (아이폰 SE ~ 프로맥스 모두 대응)
   const responsiveFontSize = width * 0.11;
   const responsiveLineHeight = responsiveFontSize * 1.3;
 
   const finishOnboarding = async () => {
-    await AsyncStorage.setItem("onboardingDone", "true");
-    router.replace("/(tabs)");
-  };
+  await AsyncStorage.setItem("onboardingDone", "true");
+  // router.replace("/(tabs)");  <-- 기존 코드를 아래로 변경
+  router.push("/signup"); // 회원가입 화면으로 이동
+};
 
   return (
     <View style={styles.container}>
@@ -111,6 +108,7 @@ export default function Onboarding() {
               style={[
                 styles.page,
                 { width },
+                // 🎯 4번 배경색 유지, 5번 레이아웃 최적화
                 isPage4 && { backgroundColor: "#D7C999" },
                 isPage5 && {
                   justifyContent: "flex-start",
@@ -123,13 +121,10 @@ export default function Onboarding() {
                   opacity,
                   transform: [{ translateY }, { scale }],
                   width: "100%",
-                  alignItems: [4, 5, 6].includes(item.id)
-                    ? "center"
-                    : "flex-start",
+                  alignItems: "center", // 4, 5, 6 모두 중앙 정렬
                 }}
               >
                 {item.lines.map((line, idx) => {
-                  // 4페이지 실선 구분선 처리
                   if (isPage4 && line === "-----") {
                     return (
                       <View
@@ -139,11 +134,9 @@ export default function Onboarding() {
                     );
                   }
 
-                  // 색상 로직 복구
+                  // 색상 로직: 4번은 레드, 5/6번은 블랙
                   let textColor = styles.black;
-                  if (isPage5 || isPage6) textColor = styles.black;
-                  else if (isPage4) textColor = styles.red;
-                  else if (idx <= 1) textColor = styles.red;
+                  if (isPage4) textColor = styles.red;
 
                   const lineStyle = [
                     styles.text,
@@ -152,12 +145,9 @@ export default function Onboarding() {
                       lineHeight: responsiveLineHeight,
                     },
                     textColor,
-                    (isPage4 || isPage5 || isPage6) && {
-                      fontWeight: "900" as any,
-                    },
+                    { fontWeight: "900" as any }, // 4, 5, 6 모두 볼드 적용
                   ];
 
-                  // 6페이지 이미지 행 처리
                   if (isPage6 && line.includes("(image1)")) {
                     return (
                       <View key={idx} style={styles.inlineContainer}>
@@ -186,7 +176,7 @@ export default function Onboarding() {
                       key={idx}
                       style={[
                         lineStyle,
-                        (isPage4 || isPage5) && { textAlign: "center" },
+                        { textAlign: "center" }, // 4, 5, 6 모두 텍스트 중앙 정렬
                       ]}
                     >
                       {line}
@@ -194,7 +184,6 @@ export default function Onboarding() {
                   );
                 })}
 
-                {/* 5페이지 메인 이미지 */}
                 {isPage5 && item.image && (
                   <Image
                     source={item.image}
@@ -210,7 +199,7 @@ export default function Onboarding() {
         }}
       />
 
-      {/* 인디케이터 */}
+      {/* 인디케이터: 이제 3개만 표시됨 */}
       <View style={styles.dotsWrapper}>
         {PAGES.map((_, idx) => (
           <View
@@ -220,7 +209,7 @@ export default function Onboarding() {
         ))}
       </View>
 
-      {/* 마지막 페이지 버튼 */}
+      {/* 🎯 마지막 페이지(index 2)에서 버튼 활성화 */}
       {currentIndex === PAGES.length - 1 && (
         <TouchableOpacity
           style={[styles.button, { width: width * 0.8 }]}
@@ -233,6 +222,7 @@ export default function Onboarding() {
   );
 }
 
+// 스타일 시트는 기존과 동일하게 유지 (수정 불필요)
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#fff" },
   page: { justifyContent: "center", paddingHorizontal: 30 },

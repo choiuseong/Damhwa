@@ -13,13 +13,11 @@ export default function Home() {
   const router = useRouter();
   const { width } = useWindowDimensions();
 
-<<<<<<< HEAD
   // 폰 기종 반응형 수치 계산 (어르신 맞춤형)
   const headerFontSize = width * 0.08; // '피드' 타이틀 (약 32px)
   const subTextSize = width * 0.05; // '오늘의 이야기...' (약 20px)
   const bigButtonFontSize = width * 0.1; // '음성대화' (약 32px)
   const smallButtonFontSize = width * 0.06; // '기록/일정' (약 24px)
-=======
   const goVoiceScreen = () => {
     router.push("/voice/voice"); // app/voice/index.tsx 로 이동
   };
@@ -31,7 +29,6 @@ export default function Home() {
   const goScheduleScreen = () => {
     router.push("/(tabs)/schedule");
   };
->>>>>>> 333c1149bd81603cd5bb9680c6a6f063e587595d
 
   return (
     <ScrollView

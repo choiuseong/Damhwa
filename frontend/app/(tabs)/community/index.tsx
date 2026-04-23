@@ -1,4 +1,3 @@
-// app/(tabs)/community/index.tsx
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import {
@@ -10,29 +9,18 @@ import {
   View,
 } from "react-native";
 
+// 담화 컬러 포인트
+const MAIN_BROWN = "#BF6A2A";
+const SUB_BEIGE = "#FFF9F3"; 
+
 export default function CommunityScreen() {
   const router = useRouter();
   const { width } = useWindowDimensions();
 
   const chatRooms = [
-    {
-      id: 1,
-      title: "오늘 아침 신문 이야기",
-      time: "매일 오전 11:30",
-      thumb: "☕",
-    },
-    {
-      id: 2,
-      title: "우리가 좋아하는 가요 무대",
-      time: "매일 오후 02:00",
-      thumb: "🐶",
-    },
-    {
-      id: 3,
-      title: "7080 노래 같이 들어요",
-      time: "매일 오후 07:00",
-      thumb: "📀",
-    },
+    { id: 1, title: "오늘 아침 신문 이야기", time: "매일 오전 11:30", thumb: "☕" },
+    { id: 2, title: "우리가 좋아하는 가요 무대", time: "매일 오후 02:00", thumb: "🐶" },
+    { id: 3, title: "7080 노래 같이 들어요", time: "매일 오후 07:00", thumb: "📀" },
   ];
 
   return (
@@ -41,7 +29,8 @@ export default function CommunityScreen() {
       <View style={styles.header}>
         <Text style={styles.title}>오픈 채팅방</Text>
         <TouchableOpacity>
-          <Ionicons name="search" size={width * 0.08} color="#fff" />
+          {/* 아이콘 색상을 포인트 컬러로 변경 */}
+          <Ionicons name="search" size={width * 0.08} color={MAIN_BROWN} />
         </TouchableOpacity>
       </View>
 
@@ -53,7 +42,6 @@ export default function CommunityScreen() {
           <TouchableOpacity
             key={room.id}
             style={styles.card}
-            // 🎯 2번 화면(info.tsx)으로 이동하면서 대화방 이름을 넘깁니다.
             onPress={() =>
               router.push({
                 pathname: "/(tabs)/community/info",
@@ -61,7 +49,7 @@ export default function CommunityScreen() {
               })
             }
           >
-            {/* 시안의 섬네일 영역 */}
+            {/* 시안의 섬네일 영역 (기존 황토색 유지 및 살짝 조정) */}
             <View style={styles.thumbArea}>
               <Text style={styles.thumbEmoji}>{room.thumb}</Text>
             </View>
@@ -74,7 +62,7 @@ export default function CommunityScreen() {
               </Text>
               <Text style={styles.roomTime}>{room.time} / 정원</Text>
 
-              {/* 참여하기 버튼 */}
+              {/* 참여하기 버튼 (담화 컬러 적용) */}
               <TouchableOpacity style={styles.joinButton}>
                 <Text style={styles.joinButtonText}>참여하기</Text>
               </TouchableOpacity>
@@ -83,9 +71,9 @@ export default function CommunityScreen() {
         ))}
       </ScrollView>
 
-      {/* 하단 채팅방 만들기 버튼 */}
+      {/* 하단 채팅방 만들기 버튼 (담화 컬러 적용) */}
       <TouchableOpacity style={styles.makeButton}>
-        <Ionicons name="add-circle" size={30} color="#111" />
+        <Ionicons name="add-circle" size={30} color="#FFF" />
         <Text style={styles.makeButtonText}>채팅방 만들기</Text>
       </TouchableOpacity>
     </View>
@@ -95,10 +83,10 @@ export default function CommunityScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#111",
+    backgroundColor: SUB_BEIGE, // 밝은 베이지 톤으로 변경
     paddingTop: 60,
     paddingBottom: 20,
-  }, // 다크 모드
+  },
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -106,25 +94,30 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     marginBottom: 20,
   },
-  title: { fontSize: 28, fontWeight: "800", color: "#fff" },
+  title: { fontSize: 28, fontWeight: "800", color: MAIN_BROWN }, // 헤더 타이틀 포인트 컬러
   list: { paddingHorizontal: 15, paddingBottom: 100 },
   card: {
-    backgroundColor: "#1A1A1A",
+    backgroundColor: "#FFF", // 카드 배경 흰색으로 변경
     borderRadius: 20,
     overflow: "hidden",
     marginBottom: 20,
-  }, // 카드도 살짝 어둡게
+    elevation: 3, // 카드 그림자 추가
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+  },
   thumbArea: {
     height: 160,
-    backgroundColor: "#FFEBCD",
+    backgroundColor: "#F0E0D0", // 기존 시안의 황토색을 좀 더 고급스럽게 조정
     justifyContent: "center",
     alignItems: "center",
-  }, // 시안의 황토색 배경
+  },
   thumbEmoji: { fontSize: 60 },
   infoArea: { padding: 16 },
-  roomTag: { color: "#AAA", fontSize: 14, marginBottom: 4 },
+  roomTag: { color: "#BF6A2A", fontSize: 14, marginBottom: 4, fontWeight: "600" },
   roomTitle: {
-    color: "#fff",
+    color: "#333", // 제목은 가독성을 위해 어두운 색 유지
     fontSize: 22,
     fontWeight: "700",
     marginBottom: 4,
@@ -132,26 +125,30 @@ const styles = StyleSheet.create({
   },
   roomTime: { color: "#888", fontSize: 16, marginBottom: 12 },
   joinButton: {
-    backgroundColor: "#20E09F",
+    backgroundColor: MAIN_BROWN, // 담화 컬러 적용
     alignSelf: "flex-start",
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 10,
-  }, // 강조색
-  joinButtonText: { color: "#111", fontWeight: "800", fontSize: 16 },
+  },
+  joinButtonText: { color: "#FFF", fontWeight: "800", fontSize: 16 },
   makeButton: {
     position: "absolute",
     bottom: 20,
     right: 20,
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#20E09F",
+    backgroundColor: MAIN_BROWN, // 담화 컬러 적용
     padding: 15,
     borderRadius: 30,
     elevation: 5,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.3,
+    shadowRadius: 5,
   },
   makeButtonText: {
-    color: "#111",
+    color: "#FFF",
     fontWeight: "800",
     fontSize: 18,
     marginLeft: 8,

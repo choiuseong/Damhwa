@@ -155,7 +155,7 @@ export default function ScheduleScreen() {
         )}
       </FadeInUp>
 
-      <PrimaryButton title="확 인" color={theme.brandDark} onPress={() => router.back()} />
+      <PrimaryButton title="확인" color={theme.brandDark} onPress={() => router.back()} />
     </ScrollView>
   );
 }

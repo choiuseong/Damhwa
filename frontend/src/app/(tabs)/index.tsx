@@ -18,7 +18,8 @@ import type { IconName } from '../../types';
 function greeting(hour: number): string {
   if (hour >= 5 && hour < 12) return '좋은 아침이에요';
   if (hour >= 12 && hour < 18) return '좋은 오후예요';
-  return '편안한 저녁이에요';
+  if (hour >= 18 && hour < 22) return '편안한 저녁이에요';
+  return '편안한 밤이에요';
 }
 
 /** PPT '한눈에 시작하는 담화' 왼쪽 폰: 피드 (음성대화 / 기록 / 일정 / 알림 / 추천) */
@@ -123,7 +124,7 @@ export default function HomeScreen() {
         />
         <Tile
           title="일정"
-          subtitle={todayCount ? `오늘 ${todayCount}개` : `전체 ${schedules.length}개`}
+          subtitle={todayCount ? `오늘 ${todayCount}개` : schedules.length ? `전체 ${schedules.length}개` : '아직 없어요'}
           icon="calendar"
           color={theme.success}
           tint={theme.successSoft}
@@ -169,6 +170,7 @@ export default function HomeScreen() {
         <Card style={{ padding: 16, gap: 12 }}>
           <Pressable
             accessibilityRole="button"
+            disabled={notices.length === 0}
             onPress={() => setExpanded((v) => !v)}
             style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}
           >
@@ -181,7 +183,7 @@ export default function HomeScreen() {
               )}
             </View>
             <AppText variant="headline" style={{ flex: 1 }}>
-              {notices.length === 0 ? '새로운 알림이 없어요.' : `${notices.length}개의 알림이 있어요.`}
+              {notices.length === 0 ? '새 알림이 없어요' : `새 알림이 ${notices.length}개 있어요`}
             </AppText>
             {notices.length > 0 && <Ionicons name={expanded ? 'chevron-up' : 'chevron-down'} size={18} color={theme.subInk} />}
           </Pressable>
@@ -205,9 +207,9 @@ export default function HomeScreen() {
         </View>
         <View style={{ flex: 1, gap: 4 }}>
           <AppText variant="headline" color={theme.success}>
-            사용자님을 위한 추천
+            맞춤 소식 준비 중
           </AppText>
-          <AppText variant="callout">{'좋아하시는 정보를 기반으로\n새로운 소식을 준비했습니다!'}</AppText>
+          <AppText variant="callout">{'다마와 이야기할수록\n좋아하실 만한 소식을 골라 드려요.'}</AppText>
         </View>
       </FadeInUp>
     </ScrollView>

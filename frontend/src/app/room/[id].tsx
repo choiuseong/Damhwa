@@ -77,13 +77,6 @@ export default function RoomScreen() {
         }}
       />
 
-      <View style={{ position: 'absolute', top: 8, right: 12, zIndex: 1, flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 999, backgroundColor: theme.gray }}>
-        <Ionicons name="people" size={13} color={theme.subInk} />
-        <AppText variant="caption" color={theme.subInk} bold>
-          2명
-        </AppText>
-      </View>
-
       <FlatList
         ref={listRef}
         data={messages}

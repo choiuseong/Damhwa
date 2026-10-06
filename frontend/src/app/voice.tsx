@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useKeepAwake } from 'expo-keep-awake';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as api from '../api';
+import { USE_MOCK } from '../api/config';
 import { AppText } from '../components/AppText';
 import { DamaMascot } from '../components/DamaMascot';
 import { FloatingDama, type DamaMode } from '../components/FloatingDama';
@@ -53,24 +54,18 @@ export default function VoiceScreen() {
 
   const conversationIdRef = useRef<string | null>(null);
 
-  // 화면이 열리면 AI가 먼저 안부를 묻는다
+  // 화면이 열리면 AI가 먼저 안부를 묻는다.
+  // 대화 저장용 id 는 뒤에서 받아 두고, 서버가 없거나 실패해도 대화는 바로 시작한다.
   useEffect(() => {
-  const initializeConversation = async () => {
-    try {
-      const conversation = await api.createConversation('1');
-
-      conversationIdRef.current = conversation.id;
-
-      console.log('대화 생성 완료:', conversation.id);
-
-      start();
-    } catch (error) {
-      console.error('대화 생성 실패:', error);
-    }
-  };
-
-  initializeConversation();
-}, [start]);
+    start();
+    if (USE_MOCK) return;
+    api
+      .createConversation('1')
+      .then((conversation) => {
+        conversationIdRef.current = conversation.id;
+      })
+      .catch((error) => console.warn('대화 생성 실패:', error));
+  }, [start]);
 
   // 통화 시간
   const live = !wrapping && state !== 'idle' && state !== 'error';
@@ -108,20 +103,17 @@ export default function VoiceScreen() {
     setKeyboard(false);
     session.stop();
     const transcript = session.getTranscript();
-    
+
+    // 대화 내용 저장은 뒤에서 — 실패해도 정리 팝업은 떠야 한다
     const conversationId = conversationIdRef.current;
-
     if (conversationId) {
-      for (const turn of transcript) {
-        const role = turn.role === 'user' ? 'elder' : 'ai';
-
-        await api.createConversationMessage(
-          conversationId,
-          role,
-          turn.text,
-        );
-      }
+      (async () => {
+        for (const turn of transcript) {
+          await api.createConversationMessage(conversationId, turn.role === 'user' ? 'elder' : 'ai', turn.text);
+        }
+      })().catch((error) => console.warn('대화 저장 실패:', error));
     }
+
     const fallback = (): api.ConversationSummary => {
       const users = transcript.filter((t) => t.role === 'user').map((t) => t.text);
       return { summary: users.join(' · ').slice(0, 80) || '오늘 나눈 이야기', pending: parseSchedules(users.join('. ')) };
@@ -459,14 +451,21 @@ function SummaryOverlay({
             <Ionicons name="checkmark-circle" size={30} color={theme.success} />
             <AppText variant="title3">대화 정리 완료</AppText>
           </View>
-          <AppText variant="subhead" color={theme.subInk}>
-            {'오늘 이야기한 내용을\n요약했어요!'}
+          <View style={{ padding: 14, borderRadius: 16, backgroundColor: theme.peach, gap: 4 }}>
+            <AppText variant="caption" color={theme.brandDark} bold>
+              오늘 나눈 이야기
+            </AppText>
+            <AppText variant="callout">{summary.summary}</AppText>
+          </View>
+
+          <AppText variant="subhead" color={theme.subInk} bold>
+            {items.length ? `찾은 일정 ${items.length}개` : '찾은 일정'}
           </AppText>
 
           <ScrollView contentContainerStyle={{ gap: 10 }}>
             {items.length === 0 ? (
-              <AppText variant="callout" color={theme.subInk} style={{ paddingVertical: 12 }}>
-                이야기 속에서 일정을 찾지 못했어요.
+              <AppText variant="callout" color={theme.subInk} style={{ paddingVertical: 4 }}>
+                이번 이야기에는 일정이 없었어요.
               </AppText>
             ) : (
               items.map((item, i) => {
@@ -494,12 +493,12 @@ function SummaryOverlay({
             )}
           </ScrollView>
 
-          <PrimaryButton title="확인" onPress={onConfirm} />
+          <PrimaryButton title={items.length ? '일정 저장하기' : '확인'} onPress={onConfirm} />
         </View>
       </PopIn>
       <Pressable accessibilityRole="button" onPress={onRetry} style={{ alignItems: 'center', padding: 8, marginTop: 14 }}>
         <AppText variant="subhead" color="rgba(255,255,255,0.9)">
-          대화 다시말해요
+          더 이야기할래요
         </AppText>
       </Pressable>
     </FadeInUp>

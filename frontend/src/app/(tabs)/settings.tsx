@@ -29,7 +29,7 @@ export default function SettingsScreen() {
     ]);
 
   return (
-    <ScrollView style={{ flex: 1, backgroundColor: '#F3F3F5' }} contentContainerStyle={{ paddingTop: insets.top + 12, paddingHorizontal: 20, paddingBottom: 40, gap: 18 }}>
+    <ScrollView style={{ flex: 1, backgroundColor: theme.background }} contentContainerStyle={{ paddingTop: insets.top + 12, paddingHorizontal: 20, paddingBottom: 40, gap: 18 }}>
       <AppText variant="largeTitle">설정</AppText>
 
       <Section title="알림">

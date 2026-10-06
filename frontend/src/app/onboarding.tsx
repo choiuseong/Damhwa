@@ -37,7 +37,7 @@ export default function OnboardingScreen() {
       </View>
       <FadeInUp delay={450}>
         <PrimaryButton
-          title="대화 시작하기"
+          title="시작하기"
           icon="arrow-forward"
           onPress={() => {
             completeOnboarding();

@@ -41,7 +41,7 @@ export default function CommunityScreen() {
   const join = (room: ChatRoom) => router.push({ pathname: '/room/[id]', params: { id: room.id } });
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#fff' }}>
+    <View style={{ flex: 1, backgroundColor: theme.background }}>
       <ScrollView contentContainerStyle={{ paddingTop: insets.top + 12, paddingHorizontal: 20, paddingBottom: 110, gap: 16 }}>
         <View style={{ gap: 8 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -188,6 +188,7 @@ function CreateRoomModal({
   onClose: () => void;
   onCreate: (title: string, meets: string) => Promise<void>;
 }) {
+  const insets = useSafeAreaInsets();
   const [title, setTitle] = useState('');
   const [meets, setMeets] = useState('');
   const [busy, setBusy] = useState(false);
@@ -206,10 +207,10 @@ function CreateRoomModal({
   const inputStyle = { backgroundColor: theme.gray, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12, fontSize: 16 } as const;
 
   return (
-    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
+    <Modal visible={visible} animationType="fade" transparent onRequestClose={onClose}>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.4)' }}>
         <Pressable style={{ flex: 1 }} onPress={onClose} accessibilityLabel="닫기" />
-        <View style={{ backgroundColor: '#fff', borderTopLeftRadius: 26, borderTopRightRadius: 26, padding: 22, gap: 12 }}>
+        <View style={{ backgroundColor: '#fff', borderTopLeftRadius: 26, borderTopRightRadius: 26, padding: 22, paddingBottom: insets.bottom + 22, gap: 12 }}>
           <AppText variant="title3">채팅방 만들기</AppText>
           <AppText variant="subhead" color={theme.subInk}>
             채팅방 이름

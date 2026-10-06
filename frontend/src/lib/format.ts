@@ -8,11 +8,11 @@ export function makeId(): string {
   return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
-/** "오전 10:00" */
+/** "오전 9:00" */
 export function formatAmPm(iso: string): string {
   const d = new Date(iso);
   const h = d.getHours();
-  return `${h < 12 ? '오전' : '오후'} ${pad(h % 12 === 0 ? 12 : h % 12)}:${pad(d.getMinutes())}`;
+  return `${h < 12 ? '오전' : '오후'} ${h % 12 === 0 ? 12 : h % 12}:${pad(d.getMinutes())}`;
 }
 
 /** "10:00" */
@@ -61,7 +61,7 @@ export function isSameDay(a: Date, b: Date): boolean {
 export function formatMinutes(total: number): string {
   const h = Math.floor(total / 60);
   const m = total % 60;
-  return `${h < 12 ? '오전' : '오후'} ${pad(h % 12 === 0 ? 12 : h % 12)}:${pad(m)}`;
+  return `${h < 12 ? '오전' : '오후'} ${h % 12 === 0 ? 12 : h % 12}:${pad(m)}`;
 }
 
 export const categoryMeta: Record<ScheduleCategory, { icon: IconName; color: string }> = {

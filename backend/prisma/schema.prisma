@@ -1,0 +1,124 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id        BigInt   @id @default(autoincrement())
+  name      String?  @db.VarChar(50)
+  phone     String?  @unique @db.VarChar(20)
+  pushToken String?
+  sessionToken String? @unique
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  conversations Conversation[]
+  schedules     Schedule[]
+  chatMessages ChatMessage[]
+  chatReports ChatReport[]
+  blocks ChatBlock[] @relation("blocker")
+  blockedBy ChatBlock[] @relation("blocked")
+
+  @@map("users")
+}
+
+model Conversation {
+  id        BigInt    @id @default(autoincrement())
+  userId    BigInt
+  title     String?   @db.VarChar(100)
+  startedAt DateTime  @default(now())
+  endedAt   DateTime?
+
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages Message[]
+
+  @@index([userId, startedAt])
+  @@map("conversations")
+}
+
+model Message {
+  id             BigInt      @id @default(autoincrement())
+  conversationId BigInt
+  role           MessageRole
+  content        String
+  createdAt      DateTime    @default(now())
+  clientId       String?
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId, createdAt])
+  @@unique([conversationId, clientId])
+  @@map("messages")
+}
+
+model Schedule {
+  id           BigInt   @id @default(autoincrement())
+  userId       BigInt
+  title        String   @db.VarChar(100)
+  scheduleTime DateTime
+  rawMessage   String?
+  clientId     String?
+  category     String @default("일정")
+  place        String?
+  notified     Boolean  @default(false)
+  createdAt    DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, scheduleTime])
+  @@index([scheduleTime, notified])
+  @@unique([userId, clientId])
+  @@map("schedules")
+}
+
+enum MessageRole {
+  elder
+  ai
+}
+// Chat routes use parameterized SQL; relations below mirror database constraints.
+model ChatRoom {
+ id String @id
+ title String
+ meets String
+ lat Float?
+ lng Float?
+ createdAt DateTime @default(now())
+ messages ChatMessage[]
+ @@map("chat_rooms")
+}
+model ChatMessage {
+ id BigInt @id @default(autoincrement())
+ roomId String
+ userId BigInt
+ text String
+ clientId String
+ createdAt DateTime @default(now())
+ room ChatRoom @relation(fields: [roomId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+ user User @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+ reports ChatReport[]
+ @@index([roomId, id])
+ @@unique([roomId, userId, clientId])
+ @@map("chat_messages")
+}
+model ChatReport {
+ id BigInt @id @default(autoincrement())
+ reporterId BigInt
+ messageId BigInt
+ createdAt DateTime @default(now())
+ reporter User @relation(fields: [reporterId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+ message ChatMessage @relation(fields: [messageId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+ @@map("chat_reports")
+}
+model ChatBlock {
+ userId BigInt
+ blockedId BigInt
+ user User @relation("blocker", fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+ blocked User @relation("blocked", fields: [blockedId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+ @@id([userId, blockedId])
+ @@map("chat_blocks")
+}

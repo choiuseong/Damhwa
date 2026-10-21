@@ -1,0 +1,35 @@
+# 변경 파일
+
+- `README_FIXES.md`
+- `TEST_RESULTS.md`
+- `backend/package-lock.json`
+- `backend/package.json`
+- `backend/prisma/migrations/20261020020000_demo_fixes/migration.sql`
+- `backend/prisma/schema.prisma`
+- `backend/src/app.ts`
+- `backend/src/controllers/conversation.controller.ts`
+- `backend/src/controllers/message.controller.ts`
+- `backend/src/controllers/user.controller.ts`
+- `backend/src/middleware/session.ts`
+- `backend/src/repositories/message.repository.ts`
+- `backend/src/routes/chat.routes.ts`
+- `backend/src/routes/conversation.routes.ts`
+- `backend/src/routes/message.routes.ts`
+- `backend/src/routes/realtime.routes.ts`
+- `backend/src/routes/schedule.routes.ts`
+- `backend/src/services/message.service.ts`
+- `backend/tests/regression.test.ts`
+- `frontend/README.md`
+- `frontend/src/api/index.ts`
+- `frontend/src/app/(tabs)/community.tsx`
+- `frontend/src/app/_layout.tsx`
+- `frontend/src/app/room/[id].tsx`
+- `frontend/src/app/schedule.tsx`
+- `frontend/src/app/voice.tsx`
+- `frontend/src/hooks/useRoomChat.ts`
+- `frontend/src/lib/format.ts`
+- `frontend/src/lib/scheduleParser.ts`
+- `frontend/src/store/useAppStore.ts`
+- `frontend/src/types.ts`
+- `frontend/src/voice/openaiRealtimeClient.ts`
+- `frontend/src/voice/useVoiceSession.ts`

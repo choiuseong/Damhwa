@@ -1,0 +1,87 @@
+{
+  "expo": {
+    "name": "담화",
+    "slug": "damhwa-app",
+    "scheme": "damhwa",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.example.damhwa",
+      "infoPlist": {
+        "UIBackgroundModes": [
+          "audio"
+        ]
+      },
+      "bitcode": false
+    },
+    "android": {
+      "package": "com.example.damhwa",
+      "permissions": [
+        "RECORD_AUDIO",
+        "MODIFY_AUDIO_SETTINGS",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.ACCESS_NETWORK_STATE",
+        "android.permission.CAMERA",
+        "android.permission.INTERNET",
+        "android.permission.MODIFY_AUDIO_SETTINGS",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.SYSTEM_ALERT_WINDOW",
+        "android.permission.WAKE_LOCK",
+        "android.permission.BLUETOOTH"
+      ],
+      "adaptiveIcon": {
+        "backgroundColor": "#FFF8F1",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false
+    },
+    "plugins": [
+      "expo-router",
+      "expo-dev-client",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 200,
+          "backgroundColor": "#FFF8F1"
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "color": "#C77338"
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "반경 2km 이내 이웃과 연결하기 위해 위치를 사용해요."
+        }
+      ],
+      [
+        "@config-plugins/react-native-webrtc",
+        {
+          "microphonePermission": "다마와 음성으로 대화하기 위해 마이크를 사용해요.",
+          "cameraPermission": "영상 통화를 위해 카메라를 사용해요."
+        }
+      ],
+      "expo-font"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "693881ec-4445-48bd-a971-59545190cdb2"
+      },
+      "router": {}
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    }
+  }
+}

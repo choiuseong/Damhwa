@@ -53,18 +53,41 @@ export default function VoiceScreen() {
   const { state, start } = session;
 
   const conversationIdRef = useRef<string | null>(null);
+  const conversationCreationRef = useRef<Promise<void> | null>(null);
 
-  // 화면이 열리면 AI가 먼저 안부를 묻는다.
-  // 대화 저장용 id 는 뒤에서 받아 두고, 서버가 없거나 실패해도 대화는 바로 시작한다.
+  // 화면이 열리면 대화방 생성이 끝난 뒤 AI가 먼저 안부를 묻는다.
   useEffect(() => {
-    start();
-    if (USE_MOCK) return;
-    api
-      .createConversation('1')
-      .then((conversation) => {
+    let cancelled = false;
+
+    if (USE_MOCK) {
+      start();
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    conversationCreationRef.current = (async () => {
+      try {
+        const conversation = await api.createConversation('1');
         conversationIdRef.current = conversation.id;
+        console.log('대화방 생성 성공:', conversation.id);
+      } catch (error) {
+        console.warn('대화방 생성 실패:', error);
+      }
+    })();
+
+    conversationCreationRef.current
+      .then(() => {
+        if (!cancelled) start();
       })
-      .catch((error) => console.warn('대화 생성 실패:', error));
+      .catch((error) => {
+        console.warn('대화 시작 준비 실패:', error);
+        if (!cancelled) start();
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, [start]);
 
   // 통화 시간
@@ -98,27 +121,71 @@ export default function VoiceScreen() {
   };
 
   const finish = async () => {
+     console.log('대화 종료 처리 시작');
     if (wrapping) return;
     setWrapping(true);
     setKeyboard(false);
     session.stop();
     const transcript = session.getTranscript();
 
-    // 대화 내용 저장은 뒤에서 — 실패해도 정리 팝업은 떠야 한다
-    const conversationId = conversationIdRef.current;
-    if (conversationId) {
-      (async () => {
-        for (const turn of transcript) {
-          await api.createConversationMessage(conversationId, turn.role === 'user' ? 'elder' : 'ai', turn.text);
+    // 대화방 생성 및 메시지 저장이 끝날 때까지 기다린다.
+    if (!USE_MOCK) {
+      try {
+        await conversationCreationRef.current;
+
+        const conversationId = conversationIdRef.current;
+
+        if (!conversationId) {
+          console.warn('대화 저장 실패: 대화방 ID가 없습니다.');
+        } else {
+          let savedCount = 0;
+          let failedCount = 0;
+
+          for (const [index, turn] of transcript.entries()) {
+            if (!turn.text.trim()) continue;
+
+            try {
+              await api.createConversationMessage(
+                conversationId,
+                turn.role === 'user' ? 'elder' : 'ai',
+                turn.text,
+              );
+              savedCount += 1;
+              console.log(`대화 메시지 저장 성공 (${savedCount}):`, {
+                conversationId,
+                role: turn.role === 'user' ? 'elder' : 'ai',
+                content: turn.text,
+              });
+            } catch (error) {
+              failedCount += 1;
+              console.warn(`대화 메시지 저장 실패 (순서 ${index + 1}):`, error);
+            }
+          }
+
+          console.log('대화 저장 결과:', {
+            conversationId,
+            total: transcript.length,
+            saved: savedCount,
+            failed: failedCount,
+          });
         }
-      })().catch((error) => console.warn('대화 저장 실패:', error));
+      } catch (error) {
+        console.warn('대화 저장 처리 실패:', error);
+      }
     }
 
     const fallback = (): api.ConversationSummary => {
       const users = transcript.filter((t) => t.role === 'user').map((t) => t.text);
-      return { summary: users.join(' · ').slice(0, 80) || '오늘 나눈 이야기', pending: parseSchedules(users.join('. ')) };
+      return {
+        summary: users.join(' · ').slice(0, 80) || '오늘 나눈 이야기',
+        pending: parseSchedules(users.join('. ')),
+      };
     };
-    const [result] = await Promise.all([api.endConversation(transcript).catch(fallback), sleep(1500)]);
+
+    const [result] = await Promise.all([
+      api.endConversation(transcript).catch(fallback),
+      sleep(1500),
+    ]);
     setSummary(result);
   };
 

@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
@@ -8,12 +9,42 @@ import { DateBadge } from '../components/DateBadge';
 import { FadeInUp } from '../components/Motion';
 import { scheduleVisual } from '../components/ScheduleIcon';
 import { formatAmPm } from '../lib/format';
-import { useAppStore } from '../store/useAppStore';
+import { getConversations } from '../api';
+import type { ConversationRecord, TranscriptTurn } from '../types';
 import { theme } from '../theme';
 
 /** 홈의 '기록' — 지난 대화 요약 목록 (타임라인) */
 export default function RecordsScreen() {
-  const records = useAppStore((s) => s.records);
+  const [records, setRecords] = useState<ConversationRecord[]>([]);
+
+  useEffect(() => {
+    getConversations('1')
+      .then((conversations) => {
+        setRecords(
+          conversations.map((conversation) => {
+            const transcript: TranscriptTurn[] = conversation.messages.map((message) => ({
+              role: message.role === 'elder' ? 'user' : 'assistant',
+              text: message.content,
+            }));
+
+            return {
+              id: conversation.id,
+              date: conversation.startedAt,
+              summary:
+                conversation.title ||
+                conversation.messages.find((message) => message.role === 'elder')?.content ||
+                conversation.messages[0]?.content ||
+                '오늘 나눈 이야기',
+              items: [],
+              transcript,
+            };
+          }),
+        );
+      })
+      .catch((error) => {
+        console.error('대화 기록 조회 실패:', error);
+      });
+  }, []);
 
   return (
     <ScrollView style={{ flex: 1, backgroundColor: theme.background }} contentContainerStyle={{ padding: 20, gap: 16 }}>

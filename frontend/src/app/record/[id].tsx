@@ -1,6 +1,8 @@
+import { useEffect, useState } from 'react';
 import { ScrollView, View } from 'react-native';
 import { Stack, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { getConversation } from '../../api';
 import { AppText } from '../../components/AppText';
 import { Card } from '../../components/Card';
 import { DamaEmptyState } from '../../components/DamaBanner';
@@ -8,14 +10,70 @@ import { DamaMascot } from '../../components/DamaMascot';
 import { FadeInUp } from '../../components/Motion';
 import { ScheduleIcon, scheduleVisual } from '../../components/ScheduleIcon';
 import { formatAmPm, formatDay, formatDayLong } from '../../lib/format';
-import { useAppStore } from '../../store/useAppStore';
 import { theme } from '../../theme';
 import type { TranscriptTurn } from '../../types';
+
+type RecordData = {
+  id: string;
+  date: string;
+  summary: string;
+  items: [];
+  transcript: TranscriptTurn[];
+};
 
 /** 기록 하나 — 다마와 주고받은 대화를 채팅처럼 */
 export default function RecordDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const record = useAppStore((s) => s.records.find((r) => r.id === id));
+  const [record, setRecord] = useState<RecordData | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!id) return;
+
+    let active = true;
+
+    getConversation(String(id))
+      .then((conversation) => {
+        if (!active) return;
+
+        const messages = conversation.messages ?? [];
+        const transcript: TranscriptTurn[] = messages.map((message) => ({
+          role: message.role === 'elder' ? 'user' : 'assistant',
+          text: message.content,
+        }));
+
+        setRecord({
+          id: conversation.id,
+          date: conversation.startedAt,
+          summary:
+            conversation.title ||
+            messages.find((message) => message.role === 'elder')?.content ||
+            messages[0]?.content ||
+            '오늘 나눈 이야기',
+          items: [],
+          transcript,
+        });
+      })
+      .catch((error) => {
+        console.error('대화 기록 조회 실패:', error);
+        if (active) setRecord(null);
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [id]);
+
+  if (loading) {
+    return (
+      <View style={{ flex: 1, backgroundColor: theme.background, padding: 20 }}>
+        <DamaEmptyState title="기록을 불러오는 중이에요." message="잠시만 기다려 주세요." />
+      </View>
+    );
+  }
 
   if (!record) {
     return (

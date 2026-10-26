@@ -67,6 +67,10 @@ export interface Conversation {
   endedAt: string | null;
 }
 
+export interface ConversationWithMessages extends Conversation {
+  messages: ConversationMessage[];
+}
+
 export async function createConversation(
   userId: string,
   title?: string,
@@ -78,6 +82,24 @@ export async function createConversation(
       title,
     }),
   });
+}
+
+/**
+ * 사용자의 대화 목록과 각 대화의 메시지를 조회한다.
+ * 기본 userId는 현재 테스트 데이터에 맞춰 '1'로 설정한다.
+ */
+export async function getConversations(
+  userId = '1',
+): Promise<ConversationWithMessages[]> {
+  return request<ConversationWithMessages[]>(
+    `/conversations?userId=${encodeURIComponent(userId)}`,
+  );
+}
+
+export async function getConversation(id: string) {
+  return request<ConversationWithMessages>(
+    `/conversations/${encodeURIComponent(id)}`,
+  );
 }
 
 export async function listConversationMessages(

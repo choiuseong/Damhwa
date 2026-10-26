@@ -60,3 +60,31 @@ export async function getConversation(req: Request, res: Response) {
     });
   }
 }
+
+export async function getConversations(req: Request, res: Response) {
+  try {
+    const userId = BigInt(String(req.query.userId ?? "1"));
+
+    const conversations =
+      await conversationService.findConversationsByUserId(userId);
+
+    res.json(
+      conversations.map((conversation) => ({
+        id: conversation.id.toString(),
+        userId: conversation.userId.toString(),
+        title: conversation.title,
+        startedAt: conversation.startedAt,
+        endedAt: conversation.endedAt,
+        messages: conversation.messages.map((message) => ({
+          id: message.id.toString(),
+          role: message.role,
+          content: message.content,
+          createdAt: message.createdAt,
+        })),
+      })),
+    );
+  } catch (error) {
+    console.error("대화 목록 조회 오류:", error);
+    res.status(500).json({ message: "대화 목록 조회에 실패했습니다." });
+  }
+}

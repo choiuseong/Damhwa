@@ -23,3 +23,21 @@ export async function findConversationById(id: bigint) {
     },
   });
 }
+
+export async function findConversationsByUserId(userId: bigint) {
+  return prisma.conversation.findMany({
+    where: {
+      userId,
+    },
+    orderBy: {
+      startedAt: "desc",
+    },
+    include: {
+      messages: {
+        orderBy: {
+          createdAt: "asc",
+        },
+      },
+    },
+  });
+}

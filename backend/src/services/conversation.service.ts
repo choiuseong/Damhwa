@@ -10,3 +10,7 @@ export async function createConversation(data: {
 export async function findConversationById(id: bigint) {
   return conversationRepository.findConversationById(id);
 }
+
+export async function findConversationsByUserId(userId: bigint) {
+  return conversationRepository.findConversationsByUserId(userId);
+}

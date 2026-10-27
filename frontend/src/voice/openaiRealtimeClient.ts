@@ -1,5 +1,6 @@
-import { createRealtimeSession } from '../api';
+import { createRealtimeSession, createSchedule } from '../api';
 import type { RealtimeClient, VoiceEvents } from './types';
+
 
 const GREETING_INSTRUCTIONS =
   '어르신께 먼저 따뜻하고 짧은 존댓말로 인사하고, 오늘 하루가 어땠는지 부담 없이 한 가지만 물어보세요.';
@@ -8,8 +9,17 @@ type ServerEvent = {
   type: string;
   delta?: string;
   transcript?: string;
-  error?: {
-    message?: string;
+  error?: { message?: string };
+
+  name?: string;
+  call_id?: string;
+  arguments?: string;
+
+  item?: {
+    type?: string;
+    name?: string;
+    call_id?: string;
+    arguments?: string;
   };
 };
 
@@ -223,6 +233,11 @@ export class OpenAIRealtimeClient implements RealtimeClient {
 
         break;
 
+      case 'response.function_call_arguments.done':
+        void this.handleFunctionCall(event);
+        
+        break;
+
       // --------------------------------------------------
       // OpenAI 오류
       // --------------------------------------------------
@@ -235,7 +250,95 @@ export class OpenAIRealtimeClient implements RealtimeClient {
         break;
     }
   }
+  private async handleFunctionCall(event: ServerEvent) {
+  const name = event.name ?? event.item?.name;
+  const callId = event.call_id ?? event.item?.call_id;
+  const rawArguments = event.arguments ?? event.item?.arguments;
 
+  if (!callId || !name) {
+    this.ev.onError('일정 도구 호출 정보를 확인할 수 없습니다.');
+    return;
+  }
+
+  if (name !== 'create_schedule') {
+    this.sendFunctionOutput(callId, {
+      success: false,
+      message: '지원하지 않는 도구입니다.',
+    });
+    return;
+  }
+
+  try {
+    if (!rawArguments) {
+      throw new Error('일정 정보가 비어 있습니다.');
+    }
+
+    const args = JSON.parse(rawArguments) as {
+      title?: unknown;
+      scheduleTime?: unknown;
+      rawMessage?: unknown;
+    };
+
+    if (
+      typeof args.title !== 'string' ||
+      !args.title.trim() ||
+      args.title.length > 100 ||
+      typeof args.scheduleTime !== 'string' ||
+      typeof args.rawMessage !== 'string' ||
+      !args.rawMessage.trim()
+    ) {
+      throw new Error('일정 정보가 올바르지 않습니다.');
+    }
+
+    const parsedTime = new Date(args.scheduleTime);
+
+    if (
+      !Number.isFinite(parsedTime.getTime()) ||
+      !/[+-]\d{2}:\d{2}$/.test(args.scheduleTime)
+    ) {
+      throw new Error('일정 날짜와 시간 형식이 올바르지 않습니다.');
+    }
+
+    if (parsedTime.getTime() <= Date.now()) {
+      throw new Error('현재보다 미래의 일정을 등록해야 합니다.');
+    }
+
+    const schedule = await createSchedule('1', {
+      title: args.title.trim(),
+      scheduleTime: parsedTime.toISOString(),
+      rawMessage: args.rawMessage.trim(),
+    });
+
+    this.sendFunctionOutput(callId, {
+      success: true,
+      schedule: {
+        id: schedule.id,
+        title: schedule.title,
+        scheduleTime: schedule.scheduleTime,
+      },
+    });
+  } catch (error) {
+    console.error('일정 도구 실행 오류:', error);
+
+    this.sendFunctionOutput(callId, {
+      success: false,
+      message: '일정을 등록하지 못했습니다. 사용자에게 다시 안내해 주세요.',
+    });
+  }
+}
+
+  private sendFunctionOutput(callId: string, result: unknown) {
+  this.send({
+    type: 'conversation.item.create',
+    item: {
+      type: 'function_call_output',
+      call_id: callId,
+      output: JSON.stringify(result),
+    },
+  });
+
+  this.send({ type: 'response.create' });
+}
   /**
    * OpenAI Realtime DataChannel로 이벤트 전송
    */

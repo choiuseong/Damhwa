@@ -1,6 +1,6 @@
 import { Router } from "express";
 import OpenAI from "openai";
-import {realtimeConfig} from "../config/realtime.config";
+import { realtimeConfig } from "../config/realtime.config";
 
 const router = Router();
 
@@ -12,10 +12,8 @@ router.post("/session", async (req, res) => {
   try {
     const sdp = req.body;
 
-    if (!sdp) {
-      res.status(400).json({
-        message: "SDP is required",
-      });
+    if (!sdp || typeof sdp !== "string") {
+      res.status(400).json({ message: "SDP is required" });
       return;
     }
 
@@ -25,6 +23,35 @@ router.post("/session", async (req, res) => {
         type: "realtime",
         model: realtimeConfig.model,
         instructions: realtimeConfig.instructions,
+        tools: [
+          {
+            type: "function",
+            name: "create_schedule",
+            description:
+              "사용자가 일정을 등록해 달라고 명확하게 요청했을 때만 호출합니다. 단순히 약속이나 날짜를 언급한 경우에는 호출하지 않습니다. 일정 날짜나 시각이 불명확하면 먼저 사용자에게 질문합니다.",
+            parameters: {
+              type: "object",
+              properties: {
+                title: {
+                  type: "string",
+                  description: "등록할 일정의 간결한 제목",
+                },
+                scheduleTime: {
+                  type: "string",
+                  description:
+                    "일정 시작 시각. 한국 시간대가 포함된 ISO 8601 형식. 예: 2026-11-03T14:00:00+09:00",
+                },
+                rawMessage: {
+                  type: "string",
+                  description: "일정 등록의 근거가 된 사용자의 실제 발화",
+                },
+              },
+              required: ["title", "scheduleTime", "rawMessage"],
+              additionalProperties: false,
+            },
+          },
+        ],
+        tool_choice: "auto",
       },
     });
 
@@ -32,8 +59,7 @@ router.post("/session", async (req, res) => {
 
     res.type("application/sdp").send(answerSdp);
   } catch (error) {
-    console.error(error);
-
+    console.error("Realtime 세션 생성 오류:", error);
     res.status(500).json({
       message: "Realtime session creation failed",
     });

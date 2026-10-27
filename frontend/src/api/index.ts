@@ -216,9 +216,10 @@ export async function deleteSchedule(id: string): Promise<void> {
     return;
   }
 
-  await request<void>(`/schedules/${id}`, {
-    method: 'DELETE',
-  });
+  await request<void>(
+    `/users/1/schedules/${encodeURIComponent(id)}`,
+    { method: 'DELETE' },
+  );
 }
 
 export async function listRooms(
@@ -323,4 +324,51 @@ export async function registerDevice(
       expoPushToken,
     }),
   });
+}
+
+export interface CreateScheduleInput {
+  title: string;
+  scheduleTime: string;
+  rawMessage: string;
+}
+
+export interface CreatedSchedule {
+  id: string;
+  userId: string;
+  title: string;
+  scheduleTime: string;
+  rawMessage: string | null;
+  notified: boolean;
+  createdAt: string;
+}
+
+export async function createSchedule(
+  userId: string,
+  data: CreateScheduleInput,
+): Promise<CreatedSchedule> {
+  return request<CreatedSchedule>(
+    `/users/${encodeURIComponent(userId)}/schedules`,
+    {
+      method: "POST",
+      body: JSON.stringify(data),
+    },
+  );
+}
+
+export interface BackendSchedule {
+  id: string;
+  userId: string;
+  title: string;
+  scheduleTime: string;
+  rawMessage: string | null;
+  notified: boolean;
+  createdAt: string;
+}
+
+export async function getSchedules(
+  userId = '1',
+): Promise<BackendSchedule[]> {
+  return request<BackendSchedule[]>(
+    `/users/${encodeURIComponent(userId)}/schedules`,
+  );
 }

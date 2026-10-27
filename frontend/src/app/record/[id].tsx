@@ -11,13 +11,20 @@ import { FadeInUp } from '../../components/Motion';
 import { ScheduleIcon, scheduleVisual } from '../../components/ScheduleIcon';
 import { formatAmPm, formatDay, formatDayLong } from '../../lib/format';
 import { theme } from '../../theme';
-import type { TranscriptTurn } from '../../types';
+import type { TranscriptTurn, ScheduleItem } from '../../types';
+
+type RecordSchedule = {
+  id: string;
+  date: string;
+  title: string;
+  [key: string]: unknown;
+};
 
 type RecordData = {
   id: string;
   date: string;
   summary: string;
-  items: [];
+  items: ScheduleItem[];
   transcript: TranscriptTurn[];
 };
 

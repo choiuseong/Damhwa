@@ -1,6 +1,6 @@
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { Alert, Pressable, ScrollView, View } from 'react-native';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import * as api from '../api';
 import { AppText } from '../components/AppText';
@@ -30,8 +30,50 @@ function monthCells(month: Date): (Date | null)[] {
 
 /** PPT '일정 관리' 화면 — 달력 + 고른 날의 일정을 크게 */
 export default function ScheduleScreen() {
-  const schedules = useAppStore((s) => s.schedules);
-  const removeSchedule = useAppStore((s) => s.removeSchedule);
+  const [schedules, setSchedules] = useState<ScheduleItem[]>([]);
+const [loading, setLoading] = useState(true);
+
+const removeSchedule = useAppStore((s) => s.removeSchedule);
+
+const loadSchedules = useCallback(async () => {
+  try {
+    const rows = await api.getSchedules('1');
+
+    const items: ScheduleItem[] = rows.map((row) => {
+      const title = row.title;
+      const normalized = title.toLowerCase();
+
+      const category: ScheduleItem['category'] =
+        /병원|치과|진료|약국|검진/.test(normalized)
+          ? '병원'
+          : /경로당/.test(title)
+            ? '경로당 방문'
+            : /쇼핑|마트|시장|외출/.test(title)
+              ? '외출/쇼핑'
+              : '일정';
+
+      return {
+        id: row.id,
+        title,
+        date: row.scheduleTime,
+        category,
+      };
+    });
+
+    setSchedules(items);
+  } catch (error) {
+    console.error('일정 조회 실패:', error);
+    Alert.alert('일정 조회 실패', '저장된 일정을 불러오지 못했어요.');
+  } finally {
+    setLoading(false);
+  }
+}, []);
+
+useFocusEffect(
+  useCallback(() => {
+    void loadSchedules();
+  }, [loadSchedules]),
+);
   const [today] = useState(() => new Date());
   const [month, setMonth] = useState(() => new Date(today.getFullYear(), today.getMonth(), 1));
   const [selected, setSelected] = useState(today);
@@ -65,10 +107,18 @@ export default function ScheduleScreen() {
       {
         text: '지우기',
         style: 'destructive',
-        onPress: () => {
-          removeSchedule(item.id);
-          cancelReminder(item.id);
-          api.deleteSchedule(item.id).catch(() => {});
+        onPress: async () => {
+          try {
+            await api.deleteSchedule(item.id);
+            setSchedules((current) =>
+              current.filter((schedule) => schedule.id !== item.id),
+            );
+            removeSchedule(item.id);
+            await cancelReminder(item.id);
+          } catch (error) {
+            console.error('일정 삭제 실패:', error);
+            Alert.alert('삭제 실패', '일정을 삭제하지 못했어요.');
+          }
         },
       },
     ]);
@@ -143,7 +193,11 @@ export default function ScheduleScreen() {
           ) : null}
         </View>
 
-        {dayItems.length === 0 ? (
+        {loading ? (
+          <AppText variant="callout" color={theme.subInk}>
+            일정을 불러오는 중이에요.
+            </AppText>
+        ) : dayItems.length === 0 ? (
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14, padding: 18, borderRadius: 24, borderWidth: 1.5, borderStyle: 'dashed', borderColor: '#E8D3C0' }}>
             <DamaMascot size={54} />
             <AppText variant="callout" color={theme.subInk} style={{ flex: 1 }}>

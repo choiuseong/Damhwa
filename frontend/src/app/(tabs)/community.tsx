@@ -1,16 +1,24 @@
-import { useEffect, useMemo, useState } from 'react';
-import { KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, TextInput, View } from 'react-native';
-import { router } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import * as api from '../../api';
-import { AppText } from '../../components/AppText';
-import { Card } from '../../components/Card';
-import { PrimaryButton } from '../../components/PrimaryButton';
-import { useNeighborhood } from '../../hooks/useNeighborhood';
-import { useAppStore } from '../../store/useAppStore';
-import { theme } from '../../theme';
-import type { ChatRoom } from '../../types';
+import { useEffect, useMemo, useState } from "react";
+import {
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  Pressable,
+  ScrollView,
+  TextInput,
+  View,
+} from "react-native";
+import { router } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import * as api from "../../api";
+import { AppText } from "../../components/AppText";
+import { Card } from "../../components/Card";
+import { PrimaryButton } from "../../components/PrimaryButton";
+import { useNeighborhood } from "../../hooks/useNeighborhood";
+import { useAppStore } from "../../store/useAppStore";
+import { theme } from "../../theme";
+import type { ChatRoom } from "../../types";
 
 /** PPT '함께하는 사이버 경로당' 왼쪽 폰: 오픈 채팅방 목록 */
 export default function CommunityScreen() {
@@ -20,7 +28,7 @@ export default function CommunityScreen() {
   const addRoom = useAppStore((s) => s.addRoom);
   const { coords, request } = useNeighborhood();
 
-  const [query, setQuery] = useState('');
+  const [query, setQuery] = useState("");
   const [showSearch, setShowSearch] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
 
@@ -36,15 +44,32 @@ export default function CommunityScreen() {
       .catch(() => {});
   }, [coords, setRooms]);
 
-  const filtered = useMemo(() => (query ? rooms.filter((r) => r.title.includes(query)) : rooms), [rooms, query]);
+  const filtered = useMemo(
+    () => (query ? rooms.filter((r) => r.title.includes(query)) : rooms),
+    [rooms, query],
+  );
 
-  const join = (room: ChatRoom) => router.push({ pathname: '/room/[id]', params: { id: room.id } });
+  const join = (room: ChatRoom) =>
+    router.push({ pathname: "/room/[id]", params: { id: room.id } });
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.background }}>
-      <ScrollView contentContainerStyle={{ paddingTop: insets.top + 12, paddingHorizontal: 20, paddingBottom: 110, gap: 16 }}>
+      <ScrollView
+        contentContainerStyle={{
+          paddingTop: insets.top + 12,
+          paddingHorizontal: 20,
+          paddingBottom: 110,
+          gap: 16,
+        }}
+      >
         <View style={{ gap: 8 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "space-between",
+            }}
+          >
             <AppText variant="title" color={theme.brand}>
               오픈 채팅방
             </AppText>
@@ -54,7 +79,7 @@ export default function CommunityScreen() {
               hitSlop={10}
               onPress={() => {
                 setShowSearch((v) => !v);
-                setQuery('');
+                setQuery("");
               }}
             >
               <Ionicons name="search" size={24} color={theme.brand} />
@@ -66,28 +91,49 @@ export default function CommunityScreen() {
               onChangeText={setQuery}
               placeholder="채팅방 이름 검색"
               placeholderTextColor="#9A9AA0"
-              style={{ backgroundColor: theme.gray, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 10, fontSize: 16 }}
+              style={{
+                backgroundColor: theme.gray,
+                borderRadius: 12,
+                paddingHorizontal: 14,
+                paddingVertical: 10,
+                fontSize: 16,
+              }}
             />
           )}
         </View>
 
-        {filtered.map((room) => (room.featured ? <FeaturedCard key={room.id} room={room} onJoin={join} /> : <CompactCard key={room.id} room={room} onJoin={join} />))}
+        {filtered.map((room) =>
+          room.featured ? (
+            <FeaturedCard key={room.id} room={room} onJoin={join} />
+          ) : (
+            <CompactCard key={room.id} room={room} onJoin={join} />
+          ),
+        )}
       </ScrollView>
 
-      <View style={{ position: 'absolute', bottom: 16, left: 0, right: 0, alignItems: 'center' }}>
+      {/* 화면 하단 채팅방 만들기 버튼 */}
+      <View
+        style={{
+          position: "absolute",
+          bottom: 16,
+          left: 0,
+          right: 0,
+          alignItems: "center",
+        }}
+      >
         <Pressable
           accessibilityRole="button"
           onPress={() => setShowCreate(true)}
           style={({ pressed }) => ({
-            flexDirection: 'row',
-            alignItems: 'center',
+            flexDirection: "row",
+            alignItems: "center",
             gap: 6,
             paddingHorizontal: 26,
             paddingVertical: 14,
             borderRadius: 999,
-            backgroundColor: theme.brand,
+            backgroundColor: theme.success, // 기존 theme.brand(갈색)에서 포인트 그린으로 변경
             opacity: pressed ? 0.9 : 1,
-            shadowColor: theme.brand,
+            shadowColor: theme.success, // 그림자 색상도 맞춰 변경
             shadowOpacity: 0.35,
             shadowRadius: 8,
             shadowOffset: { width: 0, height: 4 },
@@ -118,14 +164,20 @@ export default function CommunityScreen() {
   );
 }
 
-function JoinButton({ room, onJoin }: { room: ChatRoom; onJoin: (r: ChatRoom) => void }) {
+function JoinButton({
+  room,
+  onJoin,
+}: {
+  room: ChatRoom;
+  onJoin: (r: ChatRoom) => void;
+}) {
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={`${room.title} 참여하기`}
       onPress={() => onJoin(room)}
       style={({ pressed }) => ({
-        alignSelf: 'flex-start',
+        alignSelf: "flex-start",
         paddingHorizontal: 16,
         paddingVertical: 8,
         borderRadius: 10,
@@ -140,10 +192,23 @@ function JoinButton({ room, onJoin }: { room: ChatRoom; onJoin: (r: ChatRoom) =>
   );
 }
 
-function FeaturedCard({ room, onJoin }: { room: ChatRoom; onJoin: (r: ChatRoom) => void }) {
+function FeaturedCard({
+  room,
+  onJoin,
+}: {
+  room: ChatRoom;
+  onJoin: (r: ChatRoom) => void;
+}) {
   return (
-    <Card style={{ overflow: 'hidden' }}>
-      <View style={{ height: 130, backgroundColor: theme.peach, alignItems: 'center', justifyContent: 'center' }}>
+    <Card style={{ overflow: "hidden" }}>
+      <View
+        style={{
+          height: 130,
+          backgroundColor: theme.peach,
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
         <Ionicons name={room.icon} size={56} color={`${theme.brand}B3`} />
       </View>
       <View style={{ padding: 16, gap: 6 }}>
@@ -162,10 +227,32 @@ function FeaturedCard({ room, onJoin }: { room: ChatRoom; onJoin: (r: ChatRoom) 
   );
 }
 
-function CompactCard({ room, onJoin }: { room: ChatRoom; onJoin: (r: ChatRoom) => void }) {
+function CompactCard({
+  room,
+  onJoin,
+}: {
+  room: ChatRoom;
+  onJoin: (r: ChatRoom) => void;
+}) {
   return (
-    <Card style={{ flexDirection: 'row', alignItems: 'center', gap: 14, padding: 14 }}>
-      <View style={{ width: 64, height: 64, borderRadius: 14, backgroundColor: theme.peach, alignItems: 'center', justifyContent: 'center' }}>
+    <Card
+      style={{
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 14,
+        padding: 14,
+      }}
+    >
+      <View
+        style={{
+          width: 64,
+          height: 64,
+          borderRadius: 14,
+          backgroundColor: theme.peach,
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
         <Ionicons name={room.icon} size={28} color={theme.brand} />
       </View>
       <View style={{ flex: 1, gap: 4 }}>
@@ -189,8 +276,8 @@ function CreateRoomModal({
   onCreate: (title: string, meets: string) => Promise<void>;
 }) {
   const insets = useSafeAreaInsets();
-  const [title, setTitle] = useState('');
-  const [meets, setMeets] = useState('');
+  const [title, setTitle] = useState("");
+  const [meets, setMeets] = useState("");
   const [busy, setBusy] = useState(false);
 
   const submit = async () => {
@@ -199,30 +286,83 @@ function CreateRoomModal({
     setBusy(true);
     await onCreate(t, meets.trim());
     setBusy(false);
-    setTitle('');
-    setMeets('');
+    setTitle("");
+    setMeets("");
     onClose();
   };
 
-  const inputStyle = { backgroundColor: theme.gray, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12, fontSize: 16 } as const;
+  const inputStyle = {
+    backgroundColor: theme.gray,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    fontSize: 16,
+  } as const;
 
   return (
-    <Modal visible={visible} animationType="fade" transparent onRequestClose={onClose}>
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.4)' }}>
-        <Pressable style={{ flex: 1 }} onPress={onClose} accessibilityLabel="닫기" />
-        <View style={{ backgroundColor: '#fff', borderTopLeftRadius: 26, borderTopRightRadius: 26, padding: 22, paddingBottom: insets.bottom + 22, gap: 12 }}>
+    <Modal
+      visible={visible}
+      animationType="fade"
+      transparent
+      onRequestClose={onClose}
+    >
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        style={{
+          flex: 1,
+          justifyContent: "flex-end",
+          backgroundColor: "rgba(0,0,0,0.4)",
+        }}
+      >
+        <Pressable
+          style={{ flex: 1 }}
+          onPress={onClose}
+          accessibilityLabel="닫기"
+        />
+        <View
+          style={{
+            backgroundColor: "#fff",
+            borderTopLeftRadius: 26,
+            borderTopRightRadius: 26,
+            padding: 22,
+            paddingBottom: insets.bottom + 22,
+            gap: 12,
+          }}
+        >
           <AppText variant="title3">채팅방 만들기</AppText>
           <AppText variant="subhead" color={theme.subInk}>
             채팅방 이름
           </AppText>
-          <TextInput value={title} onChangeText={setTitle} placeholder="예: 우리 동네 산책 모임" placeholderTextColor="#9A9AA0" style={inputStyle} />
+          <TextInput
+            value={title}
+            onChangeText={setTitle}
+            placeholder="예: 우리 동네 산책 모임"
+            placeholderTextColor="#9A9AA0"
+            style={inputStyle}
+          />
           <AppText variant="subhead" color={theme.subInk}>
             모이는 시간 (선택)
           </AppText>
-          <TextInput value={meets} onChangeText={setMeets} placeholder="예: 매주 금요일 오전 9:00" placeholderTextColor="#9A9AA0" style={inputStyle} />
-          <View style={{ flexDirection: 'row', gap: 10, marginTop: 6 }}>
-            <PrimaryButton title="취소" color={theme.brandDark} onPress={onClose} style={{ flex: 1 }} />
-            <PrimaryButton title="만들기" onPress={submit} disabled={!title.trim() || busy} style={{ flex: 1 }} />
+          <TextInput
+            value={meets}
+            onChangeText={setMeets}
+            placeholder="예: 매주 금요일 오전 9:00"
+            placeholderTextColor="#9A9AA0"
+            style={inputStyle}
+          />
+          <View style={{ flexDirection: "row", gap: 10, marginTop: 6 }}>
+            <PrimaryButton
+              title="취소"
+              color={theme.brandDark}
+              onPress={onClose}
+              style={{ flex: 1 }}
+            />
+            <PrimaryButton
+              title="만들기"
+              onPress={submit}
+              disabled={!title.trim() || busy}
+              style={{ flex: 1 }}
+            />
           </View>
         </View>
       </KeyboardAvoidingView>

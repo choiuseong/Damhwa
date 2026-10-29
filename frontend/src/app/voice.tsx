@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Animated, Easing, KeyboardAvoidingView, Platform, Pressable, ScrollView, TextInput, View } from 'react-native';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useKeepAwake } from 'expo-keep-awake';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -40,7 +40,9 @@ const STATUS: Record<VoiceState | 'wrapping', { text: string; color: string }> =
 export default function VoiceScreen() {
   useKeepAwake();
   const insets = useSafeAreaInsets();
-  const session = useVoiceSession();
+  const { topic, title, message } = useLocalSearchParams<{ topic?: string; title?: string; message?: string }>();
+  const [reminder] = useState(() => (topic === 'alarm' && title && message ? { title, message } : undefined));
+  const session = useVoiceSession(topic === 'meal' ? 'meal' : reminder ? 'alarm' : undefined, reminder);
   const confirmConversation = useAppStore((s) => s.confirmConversation);
   const notificationsEnabled = useAppStore((s) => s.notificationsEnabled);
 

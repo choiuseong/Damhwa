@@ -48,6 +48,10 @@ export default function SettingsScreen() {
             }
           />
         )}
+        <Row
+          label="식사 안부 묻기 (아침 8시 · 점심 12시 · 저녁 6시)"
+          right={<Switch value={s.mealCheckInEnabled} onValueChange={s.setMealCheckInEnabled} trackColor={{ true: theme.brand }} />}
+        />
       </Section>
 
       <Section title="화면">

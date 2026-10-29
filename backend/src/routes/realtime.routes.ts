@@ -1,6 +1,6 @@
 import { Router } from "express";
 import OpenAI from "openai";
-import { realtimeConfig } from "../config/realtime.config";
+import { buildInstructions, realtimeConfig } from "../config/realtime.config";
 
 const router = Router();
 
@@ -22,7 +22,10 @@ router.post("/session", async (req, res) => {
       session: {
         type: "realtime",
         model: realtimeConfig.model,
-        instructions: realtimeConfig.instructions,
+        instructions: buildInstructions(),
+        audio: {
+          output: { voice: realtimeConfig.voice },
+        },
         tools: [
           {
             type: "function",
@@ -45,8 +48,13 @@ router.post("/session", async (req, res) => {
                   type: "string",
                   description: "일정 등록의 근거가 된 사용자의 실제 발화",
                 },
+                reminderMessage: {
+                  type: "string",
+                  description:
+                    "일정 시각이 되면 다마가 어르신께 건넬 한두 문장. 다정한 해요체. 예: 어르신, 약 드실 시간이에요~ 물이랑 같이 꼭 챙겨 드세요.",
+                },
               },
-              required: ["title", "scheduleTime", "rawMessage"],
+              required: ["title", "scheduleTime", "rawMessage", "reminderMessage"],
               additionalProperties: false,
             },
           },

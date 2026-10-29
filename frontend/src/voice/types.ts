@@ -1,4 +1,13 @@
-export type VoiceState = 'idle' | 'connecting' | 'listening' | 'thinking' | 'speaking' | 'error';
+/** 대화를 연 계기 (식사 안부 알림 → 'meal', 일정 알림 → 'alarm') */
+export type VoiceTopic = 'meal' | 'alarm';
+
+/** 일정 알림을 눌러 대화를 열었을 때 다마가 먼저 꺼낼 일정 */
+export interface VoiceReminder {
+  title: string;
+  message: string;
+}
+
+export type VoiceState ='idle' | 'connecting' | 'listening' | 'thinking' | 'speaking' | 'error';
 
 export interface VoiceEvents {
   onState: (state: VoiceState) => void;

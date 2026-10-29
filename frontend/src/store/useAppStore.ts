@@ -17,6 +17,8 @@ interface AppState {
   rooms: ChatRoom[];
   largeText: boolean;
   notificationsEnabled: boolean;
+  /** 아침·점심·저녁 식사 안부 알림 */
+  mealCheckInEnabled: boolean;
   /** 매일 안부 시간 (자정 기준 분) */
   checkInMinutes: number;
 
@@ -27,6 +29,7 @@ interface AppState {
   addRoom: (title: string, meets: string) => ChatRoom;
   setLargeText: (v: boolean) => void;
   setNotificationsEnabled: (v: boolean) => void;
+  setMealCheckInEnabled: (v: boolean) => void;
   setCheckInMinutes: (m: number) => void;
   resetData: () => void;
 }
@@ -40,6 +43,7 @@ export const useAppStore = create<AppState>()(
       rooms: DEFAULT_ROOMS,
       largeText: false,
       notificationsEnabled: true,
+      mealCheckInEnabled: true,
       checkInMinutes: 10 * 60,
 
       completeOnboarding: () => set({ hasOnboarded: true }),
@@ -70,6 +74,7 @@ export const useAppStore = create<AppState>()(
 
       setLargeText: (largeText) => set({ largeText }),
       setNotificationsEnabled: (notificationsEnabled) => set({ notificationsEnabled }),
+      setMealCheckInEnabled: (mealCheckInEnabled) => set({ mealCheckInEnabled }),
       setCheckInMinutes: (m) => set({ checkInMinutes: ((m % 1440) + 1440) % 1440 }),
       resetData: () => set({ schedules: [], records: [], rooms: DEFAULT_ROOMS }),
     }),

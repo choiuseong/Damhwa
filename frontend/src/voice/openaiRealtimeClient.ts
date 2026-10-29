@@ -1,4 +1,4 @@
-import { createRealtimeSession, createSchedule } from '../api';
+import { createRealtimeSession, createSchedule, getSchedules, getConversations, } from '../api';
 import { scheduleAlarm } from '../lib/notifications';
 import { useAppStore } from '../store/useAppStore';
 import { setActiveAnnouncer } from './activeSession';
@@ -313,6 +313,125 @@ export class OpenAIRealtimeClient implements RealtimeClient {
     this.ev.onError('일정 도구 호출 정보를 확인할 수 없습니다.');
     return;
   }
+
+  if (name === 'get_schedules') {
+  try {
+    const schedules = await getSchedules('1');
+
+    const now = Date.now();
+
+    const upcoming = schedules
+      .filter((schedule) => {
+        const time = new Date(schedule.scheduleTime).getTime();
+        return Number.isFinite(time) && time >= now;
+      })
+      .sort(
+        (a, b) =>
+          new Date(a.scheduleTime).getTime() -
+          new Date(b.scheduleTime).getTime(),
+      )
+      .slice(0, 20)
+      .map((schedule) => ({
+        id: schedule.id,
+        title: schedule.title,
+        scheduleTime: schedule.scheduleTime,
+      }));
+
+    this.sendFunctionOutput(callId, {
+      success: true,
+      schedules: upcoming,
+    });
+  } catch (error) {
+    console.error('일정 조회 도구 실행 오류:', error);
+
+    this.sendFunctionOutput(callId, {
+      success: false,
+      message: '일정을 조회하지 못했습니다.',
+    });
+  }
+
+  return;
+}
+
+if (name === 'get_conversation_history') {
+  try {
+
+    if (!rawArguments) {
+      throw new Error('대화 조회 인자가 비어 있습니다.');
+    }
+
+    const parsed = JSON.parse(rawArguments) as {
+      query: string;
+    };
+
+    const query = parsed.query?.trim() ?? '';
+    const conversations = await getConversations('1');
+
+    // 최신 대화부터 최대 5개 선택
+    const recentConversations = [...conversations]
+      .sort(
+        (a, b) =>
+          new Date(b.startedAt).getTime() -
+          new Date(a.startedAt).getTime(),
+      )
+      .slice(0, 5);
+
+    const keywords = query
+      .toLowerCase()
+      .split(/\s+/)
+      .filter((word) => word.length >= 2);
+
+    const messages = recentConversations.flatMap(
+      (conversation) =>
+        conversation.messages.map((message) => ({
+          conversationId: conversation.id,
+          title: conversation.title,
+          role: message.role,
+          content: message.content,
+          createdAt: message.createdAt,
+        })),
+    );
+
+    // 검색어가 없으면 최근 메시지 조회
+    // 검색어가 있으면 내용 또는 대화 제목으로 검색
+    const matchedMessages =
+      keywords.length === 0
+        ? messages
+        : messages.filter((message) => {
+            const text =
+              `${message.title ?? ''} ${message.content}`
+                .toLowerCase();
+
+            return keywords.some((keyword) =>
+              text.includes(keyword),
+            );
+          });
+
+    const resultMessages = matchedMessages
+      .sort(
+        (a, b) =>
+          new Date(a.createdAt).getTime() -
+          new Date(b.createdAt).getTime(),
+      )
+      .slice(-30);
+
+    this.sendFunctionOutput(callId, {
+      success: true,
+      query,
+      found: resultMessages.length > 0,
+      messages: resultMessages,
+    });
+  } catch (error) {
+    console.error('대화 기록 조회 실패:', error);
+
+    this.sendFunctionOutput(callId, {
+      success: false,
+      error: '과거 대화 기록을 조회하지 못했습니다.',
+    });
+  }
+
+  return;
+}
 
   if (name !== 'create_schedule') {
     this.sendFunctionOutput(callId, {

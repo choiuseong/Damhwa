@@ -72,7 +72,15 @@
           "cameraPermission": "영상 통화를 위해 카메라를 사용해요."
         }
       ],
-      "expo-font"
+      "expo-font",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "사이버경로당에 사진을 보내기 위해 사진첩을 사용해요.",
+          "cameraPermission": false,
+          "microphonePermission": false
+        }
+      ]
     ],
     "extra": {
       "eas": {

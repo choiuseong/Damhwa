@@ -1,8 +1,10 @@
+// [변경] 웹 안내창(DialogHost) 추가
 import { useEffect, useState } from 'react';
 import { router, Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import * as Notifications from 'expo-notifications';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { DialogHost } from '../components/DialogHost';
 import { theme } from '../theme';
 import { useAppStore } from '../store/useAppStore';
 import {
@@ -79,6 +81,8 @@ export default function RootLayout() {
           options={{ headerShown: true, title: '', headerTintColor: theme.brand, headerShadowVisible: false, headerBackTitle: '뒤로' }}
         />
       </Stack>
+      {/* 웹 브라우저에서만 안내창 표시 (휴대폰은 시스템 Alert) */}
+      <DialogHost />
     </SafeAreaProvider>
   );
 }

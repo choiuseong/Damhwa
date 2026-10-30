@@ -1,14 +1,20 @@
+// [변경] OpenAI 키가 없어도 서버가 켜지도록 클라이언트를 필요할 때 만들고, 키가 없으면 503
 import { Router } from "express";
 import OpenAI from "openai";
 import { realtimeConfig } from "../config/realtime.config";
 
 const router = Router();
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+// 키가 없을 때 서버 전체가 시작조차 못 하던 문제 수정:
+// OpenAI 클라이언트를 처음 음성 요청이 올 때 만든다. (키 없이도 채팅·일정 등 다른 기능은 동작)
+let openai: OpenAI | null = null;
 
 router.post("/session", async (req, res) => {
+  if (!process.env.OPENAI_API_KEY) {
+    res.status(503).json({ message: "음성 대화용 OPENAI_API_KEY 가 backend/.env 에 없어요." });
+    return;
+  }
+  openai ??= new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
   try {
     const sdp = req.body;
 

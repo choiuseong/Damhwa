@@ -1,0 +1,120 @@
+담화 사이버 경로당 - 변경한 파일
+
+backend/.env.example
+  - DATABASE_URL 기본값(내장 DB), OPENAI_API_KEY, OPENAI_SUMMARY_MODEL, CHAT_HIDE_THRESHOLD, CHAT_ADMIN_KEY, CHAT_UPLOAD_DIR 추가
+backend/.gitignore
+  - .localdb/, uploads/ 제외
+backend/package-lock.json
+  - 위 패키지 설치 기록
+backend/package.json
+  - 실행 스크립트(dev·start·db:local·test 등), pg·ws·PGlite·tsx 추가
+backend/prisma/migrations/20261030000000_cyber_kyungrodang/migration.sql
+  - 새 파일: 채팅 사용자·방·메시지·신고·차단 테이블, 기본 공용 방 3개
+backend/prisma/migrations/20261031000000_chat_features/migration.sql
+  - 새 파일: 최대 인원, 메시지 종류·삭제, 참여자, 나에게만 삭제, 예약 전송 테이블
+backend/prisma/migrations/20261101000000_chat_owner_likes/migration.sql
+  - 새 파일: 방장·공지·닫힌 방, 공감 테이블
+backend/prisma/migrations/20261102000000_chat_activity/migration.sql
+  - 새 파일: 모임 참석(chat_rsvps)·출석 도장(chat_checkins) 테이블
+backend/prisma/schema.prisma
+  - ChatUser, ChatRoom, ChatMessage, ChatReport, ChatBlock, ChatMember, ChatMessageHide, ChatScheduled, ChatLike 모델 추가
+  - ChatRoom 에 maxMembers, ownerId, notice, closedAt 추가
+  - 4차: ChatRsvp, ChatCheckin 모델
+backend/scripts/local-db.ts
+  - 새 파일: 설치 없이 쓰는 내장 DB(PGlite), 마이그레이션 자동 적용, 시연용 사용자 1번
+backend/src/app.ts
+  - /rooms, /uploads, /admin/chat 경로 연결
+backend/src/chat/admin.routes.ts
+  - 새 파일: 운영자 신고 목록·숨김 해제 (CHAT_ADMIN_KEY)
+backend/src/chat/chat.routes.ts
+  - 새 파일: 방 목록·만들기(최대 인원)·들어오기·나가기, 메시지·스티커·사진, 삭제(모두에게/나에게만), 읽음, 예약 전송, 한 줄 요약, 신고(자동 숨김)·차단
+  - 3차: 닫힌 방·나간 이웃 방은 목록에서 제외, 방장 지정·위임 안내, 방 정보, 공지(방장), 공감, 배경 사진
+  - 4차: 방 이름 바꾸기(방장), 모임 참석 체크, 출석 도장, 공지가 바뀌면 참석 답 초기화
+backend/src/chat/db.ts
+  - 새 파일: 채팅 DB 연결, 시간대 맞춤, 마이그레이션 자동 적용
+  - 4차: 마이그레이션 20261102000000_chat_activity 추가
+backend/src/chat/hub.ts
+  - 새 파일: WebSocket 실시간 전달 (메시지·숨김·삭제·인원·나감)
+  - 3차: 공감 수(likes), 방장·공지(room) 이벤트
+  - 4차: room 이벤트에 방 이름·참석·출석 수
+backend/src/chat/identity.ts
+  - 새 파일: 기기 ID(X-Device-Id)로 사용자 구분, 닉네임 "이웃 N"
+backend/src/chat/images.ts
+  - 새 파일: 사진 저장·확인(진짜 사진만, 5MB)
+backend/src/chat/index.ts
+  - 새 파일: 채팅 모듈 묶음 (라우터·업로드·운영자·WebSocket·예약)
+backend/src/chat/scheduler.ts
+  - 새 파일: 예약 메시지를 10초마다 확인해 보냄
+backend/src/chat/service.ts
+  - 새 파일: 메시지 저장, 들어오기(인원 제한)·나가기
+  - 3차: 나가기 때 방장 위임·빈 방 닫기, 방 정보
+  - 4차: 방 정보에 방 이름·참석·출석 수, 내 참석 답·연속 출석, 출석 저장
+backend/src/chat/shapes.ts
+  - 새 파일: 앱에 보내는 방·메시지 모양, 신고 사유, 스티커
+  - 3차: isOwner, 공감 수, 오늘의 이야깃거리
+backend/src/chat/summary.ts
+  - 새 파일: 알림 한 줄 요약 (OpenAI 키가 있으면 AI, 없으면 규칙)
+backend/src/routes/realtime.routes.ts
+  - OpenAI 키가 없어도 서버가 켜지도록 클라이언트를 필요할 때 만들고, 키가 없으면 503
+backend/src/server.ts
+  - http 서버 + WebSocket(/ws) 연결, 채팅 테이블 확인, 예약 전송 시작, 0.0.0.0 으로 열기
+backend/tests/chat.test.ts
+  - 새 파일: 사이버 경로당 자동 테스트
+  - 4차: 방 이름 바꾸기, 모임 참석, 출석 도장 테스트
+backend/tsconfig.json
+  - scripts·tests 폴더 포함
+frontend/.env.example
+  - EXPO_PUBLIC_API_URL 설명 추가, 기본값 http://localhost:3000 (백엔드 연결)
+frontend/app.json
+  - expo-image-picker 사진 권한 문구
+frontend/package-lock.json
+  - 위 패키지 설치 기록
+frontend/package.json
+  - react-native-web·@expo/metro-runtime·expo-image-picker 추가
+frontend/src/api/index.ts
+  - 사이버 경로당 API (기기 ID 헤더, 방·메시지·참여·나가기·삭제·읽음·사진·예약·요약·신고·차단)
+  - 3차: 방 정보·공지·공감·배경 사진
+  - 4차: 방 이름 바꾸기, 참석 답, 출석 도장
+frontend/src/app/(tabs)/community.tsx
+  - 서버 방 목록(탭에 올 때마다 새로), 참여 인원·새 글·가득 참 표시, 방 만들 때 최대 인원
+  - 3차: "내가 방장" 표시
+frontend/src/app/(tabs)/index.tsx
+  - 홈 알림 카드에 한 줄 요약
+frontend/src/app/_layout.tsx
+  - 웹 안내창(DialogHost) 추가
+frontend/src/app/room/[id].tsx
+  - 서버 채팅 연결, ⋮ 메뉴(꾸미기·예약·나가기), 메시지 길게 누르기(삭제·신고·차단), 스티커·사진 말풍선, 테마, 이모티콘, 사진 보내기
+  - 3차: 공지·오늘의 이야깃거리 카드, 공감 버튼, 배경 사진, 방장 메뉴
+  - 4차: 자주 쓰는 말 버튼, 모임 참석(갈게요/못 가요), 내 일정에 넣기, 사기 의심 경고, 출석 도장 카드, 사진 크게 보기, 말로 입력(마이크), 방 이름 바꾸기 메뉴
+frontend/src/components/DialogHost.tsx
+  - 새 파일: 웹에서도 보이는 안내창
+frontend/src/components/EmojiPanel.tsx
+  - 새 파일: 이모티콘·스티커 고르기
+frontend/src/components/RoomSheets.tsx
+  - 새 파일: 채팅방 꾸미기, 예약 메시지 창
+  - 3차: 내 사진 배경, 예약 시간 직접 조절(날짜·오전/오후·시·분), 방 공지 쓰기 창
+  - 4차: 시간 고르기(TimePicker) 공용으로 분리, 방 이름 바꾸기 창, 내 일정에 넣기 창
+frontend/src/hooks/useRoomChat.ts
+  - 서버 모드: 참여 → 불러오기 → WebSocket 실시간, 끊기면 3초 확인·재연결, 삭제·숨김·인원·나감 반영, 읽음 표시
+  - 3차: 방 정보, 공감(먼저 반영 후 실패 시 되돌림)
+  - 4차: 방 정보 변경을 합쳐서 반영(내 답·내 출석 유지)
+frontend/src/lib/chatIdentity.ts
+  - 새 파일: 기기 ID 만들기·저장
+frontend/src/lib/chatThemes.ts
+  - 새 파일: 채팅방 테마 6가지
+frontend/src/lib/dialog.ts
+  - 새 파일: 안내창 (웹·휴대폰 공통)
+frontend/src/lib/emoji.ts
+  - 새 파일: 이모티콘·스티커 목록
+frontend/src/lib/safety.ts
+  - 새 파일: 사기 의심 글 알아보기 (전화번호·주소·계좌·돈 이야기)
+frontend/src/lib/speechInput.ts
+  - 새 파일: 말로 입력하기 (브라우저 음성 인식)
+frontend/src/store/useAppStore.ts
+  - 방별 테마(roomThemes)
+  - 3차: 방별 배경 사진(roomBackgrounds)
+frontend/src/types.ts
+  - ChatRoom 인원·참여·새 글·방장, ChatMessage 종류·삭제·공감, ChatRoomInfo
+  - 4차: ChatRoomInfo 에 방 이름·참석·출석
+frontend/.env
+  - 새 파일: EXPO_PUBLIC_API_URL=http://localhost:3000 (프론트 → 백엔드 연결 주소)

@@ -1,6 +1,9 @@
+// [변경] 방별 테마(roomThemes)
+// [변경] 3차: 방별 배경 사진(roomBackgrounds)
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
+import type { ChatThemeKey } from '../lib/chatThemes';
 import type { ChatRoom, ConversationRecord, ScheduleItem, TranscriptTurn } from '../types';
 import { makeId } from '../lib/format';
 
@@ -19,6 +22,10 @@ interface AppState {
   notificationsEnabled: boolean;
   /** 매일 안부 시간 (자정 기준 분) */
   checkInMinutes: number;
+  /** 채팅방 꾸미기 (방 id → 테마). 나에게만 적용 */
+  roomThemes: Record<string, ChatThemeKey>;
+  /** 채팅방 배경 사진 (방 id → 서버 사진 주소). 나에게만 적용 */
+  roomBackgrounds: Record<string, string>;
 
   completeOnboarding: () => void;
   confirmConversation: (items: ScheduleItem[], summary: string, transcript?: TranscriptTurn[]) => void;
@@ -29,6 +36,9 @@ interface AppState {
   setNotificationsEnabled: (v: boolean) => void;
   setCheckInMinutes: (m: number) => void;
   resetData: () => void;
+  setRoomTheme: (roomId: string, theme: ChatThemeKey) => void;
+  /** null 이면 배경 사진 지우기 */
+  setRoomBackground: (roomId: string, url: string | null) => void;
 }
 
 export const useAppStore = create<AppState>()(
@@ -71,6 +81,15 @@ export const useAppStore = create<AppState>()(
       setLargeText: (largeText) => set({ largeText }),
       setNotificationsEnabled: (notificationsEnabled) => set({ notificationsEnabled }),
       setCheckInMinutes: (m) => set({ checkInMinutes: ((m % 1440) + 1440) % 1440 }),
+      roomThemes: {},
+      setRoomTheme: (roomId, t) => set((s) => ({ roomThemes: { ...s.roomThemes, [roomId]: t } })),
+      roomBackgrounds: {},
+      setRoomBackground: (roomId, url) => set((s) => {
+        const next = { ...s.roomBackgrounds };
+        if (url) next[roomId] = url;
+        else delete next[roomId];
+        return { roomBackgrounds: next };
+      }),
       resetData: () => set({ schedules: [], records: [], rooms: DEFAULT_ROOMS }),
     }),
     {

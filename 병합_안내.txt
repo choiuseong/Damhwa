@@ -1,0 +1,12 @@
+담화 DEMO + 4차 사이버 경로당 통합본 (2026-10-31)
+
+기준: Damhwa-demo.zip. AI 음성, 다마 말투, 식사 알림, 일정 알림, 알림 음원, 음성 세션 구현 유지.
+가져온 기능: 4차 채팅 백엔드(WebSocket/REST), 채팅 DB 모델 및 마이그레이션, 채팅 화면/상태/테마, 신고/차단/이미지/스티커/방장/공지/출석/참석, 관련 패키지.
+
+1. backend: npm ci 후 .env 설정, npm run db:local (별도 창) 또는 기존 PostgreSQL 설정, npm run db:migrate, npm run dev
+2. frontend: npm ci, .env에 EXPO_PUBLIC_API_URL=http://PC_IP:3000 설정 후 npx expo start --clear
+3. PC와 스마트폰이 같은 서버 주소를 바라보도록 설정. localhost는 휴대폰에서 PC를 가리키지 않습니다.
+4. 실제 PostgreSQL을 사용할 때는 DB 백업 후 마이그레이션을 적용하세요.
+5. Expo Go에서 react-native-webrtc 같은 네이티브 모듈은 기능 제약이 있을 수 있습니다. 채팅은 웹/Expo Go부터 별도 검증하세요.
+
+주의: 이는 소스 기준 통합본이며 기기 2대 실시간 시험 및 OpenAI 음성 API 실연동은 수행하지 않았습니다.

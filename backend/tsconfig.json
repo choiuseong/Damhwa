@@ -3,19 +3,18 @@
     "target": "ES2022",
     "module": "Node16",
     "moduleResolution": "node16",
-
     "rootDir": ".",
     "outDir": "./dist",
-
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
-
     "verbatimModuleSyntax": false,
     "forceConsistentCasingInFileNames": true
   },
   "include": [
     "src/**/*.ts",
+    "scripts/**/*.ts",
+    "tests/**/*.ts",
     "prisma7.config.ts"
   ]
 }

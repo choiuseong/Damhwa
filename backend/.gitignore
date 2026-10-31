@@ -1,3 +1,4 @@
+# [변경] .localdb/, uploads/ 제외
 # Dependencies
 node_modules/
 
@@ -37,3 +38,7 @@ Thumbs.db
 # Temporary
 tmp/
 temp/
+# 내장 DB 데이터 (npm run db:local)
+.localdb/
+# 채팅 사진 파일
+uploads/

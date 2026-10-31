@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
+import type { ChatThemeKey } from '../lib/chatThemes';
 import type { ChatRoom, ConversationRecord, ScheduleItem, TranscriptTurn } from '../types';
 import { makeId } from '../lib/format';
 
@@ -17,8 +18,12 @@ interface AppState {
   rooms: ChatRoom[];
   largeText: boolean;
   notificationsEnabled: boolean;
+  /** 아침·점심·저녁 식사 안부 알림 */
+  mealCheckInEnabled: boolean;
   /** 매일 안부 시간 (자정 기준 분) */
   checkInMinutes: number;
+  roomThemes: Record<string, ChatThemeKey>;
+  roomBackgrounds: Record<string, string>;
 
   completeOnboarding: () => void;
   confirmConversation: (items: ScheduleItem[], summary: string, transcript?: TranscriptTurn[]) => void;
@@ -27,8 +32,11 @@ interface AppState {
   addRoom: (title: string, meets: string) => ChatRoom;
   setLargeText: (v: boolean) => void;
   setNotificationsEnabled: (v: boolean) => void;
+  setMealCheckInEnabled: (v: boolean) => void;
   setCheckInMinutes: (m: number) => void;
   resetData: () => void;
+  setRoomTheme: (roomId: string, theme: ChatThemeKey) => void;
+  setRoomBackground: (roomId: string, url: string | null) => void;
 }
 
 export const useAppStore = create<AppState>()(
@@ -40,7 +48,10 @@ export const useAppStore = create<AppState>()(
       rooms: DEFAULT_ROOMS,
       largeText: false,
       notificationsEnabled: true,
+      mealCheckInEnabled: true,
       checkInMinutes: 10 * 60,
+      roomThemes: {},
+      roomBackgrounds: {},
 
       completeOnboarding: () => set({ hasOnboarded: true }),
 
@@ -70,7 +81,15 @@ export const useAppStore = create<AppState>()(
 
       setLargeText: (largeText) => set({ largeText }),
       setNotificationsEnabled: (notificationsEnabled) => set({ notificationsEnabled }),
+      setMealCheckInEnabled: (mealCheckInEnabled) => set({ mealCheckInEnabled }),
       setCheckInMinutes: (m) => set({ checkInMinutes: ((m % 1440) + 1440) % 1440 }),
+      setRoomTheme: (roomId, t) => set((s) => ({ roomThemes: { ...s.roomThemes, [roomId]: t } })),
+      setRoomBackground: (roomId, url) => set((s) => {
+        const next = { ...s.roomBackgrounds };
+        if (url) next[roomId] = url;
+        else delete next[roomId];
+        return { roomBackgrounds: next };
+      }),
       resetData: () => set({ schedules: [], records: [], rooms: DEFAULT_ROOMS }),
     }),
     {

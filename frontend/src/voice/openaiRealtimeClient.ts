@@ -1,9 +1,21 @@
-import { createRealtimeSession, createSchedule } from '../api';
-import type { RealtimeClient, VoiceEvents } from './types';
+import { createRealtimeSession, createSchedule, getSchedules, getConversations, } from '../api';
+import { scheduleAlarm } from '../lib/notifications';
+import { useAppStore } from '../store/useAppStore';
+import { setActiveAnnouncer } from './activeSession';
+import type { RealtimeClient, VoiceEvents, VoiceReminder, VoiceTopic } from './types';
 
 
 const GREETING_INSTRUCTIONS =
-  '어르신께 먼저 따뜻하고 짧은 존댓말로 인사하고, 오늘 하루가 어땠는지 부담 없이 한 가지만 물어보세요.';
+  '반가운 어르신께 전화 드린 손주처럼 밝고 다정한 해요체로 짧게 인사하고, 오늘 하루 어떻게 보내셨는지 한 가지만 가볍게 여쭤보세요. 반말과 상담원 같은 인사말은 쓰지 마세요.';
+
+const MEAL_GREETING_INSTRUCTIONS =
+  '반가운 어르신께 전화 드린 손주처럼 밝고 다정한 해요체로 짧게 인사하고, 식사는 하셨는지, 뭐 맛있는 거 드셨는지 가볍게 여쭤보세요. 반말과 상담원 같은 인사말은 쓰지 마세요.';
+
+const alarmGreetingInstructions = (r: VoiceReminder) =>
+  `어르신이 등록해 두신 '${r.title}' 시간이 됐어요. 손주처럼 다정한 해요체로 "${r.message}" 같은 느낌으로 먼저 알려 드리고, 챙기셨는지 가볍게 하나만 여쭤보세요. 반말과 상담원 같은 말투는 쓰지 마세요.`;
+
+const alarmNotice = (title: string, message: string) =>
+  `[일정 알림] 지금은 어르신이 등록하신 '${title}' 시간이에요. 하던 이야기를 잠깐 멈추고 "${message}" 같은 느낌으로 다정하게 알려 드리세요.`;
 
 type ServerEvent = {
   type: string;
@@ -30,8 +42,11 @@ export class OpenAIRealtimeClient implements RealtimeClient {
   private inCall: any = null;
   private assistantBuffer = '';
   private stopped = false;
+  /** 다마가 응답하는 중에는 새 응답을 만들 수 없어서, 알림을 잠깐 미뤄 둔다 */
+  private responding = false;
+  private pendingNotices: string[] = [];
 
-  constructor(private ev: VoiceEvents) {}
+  constructor(private ev: VoiceEvents, private topic?: VoiceTopic, private reminder?: VoiceReminder) {}
 
   async start(): Promise<void> {
     this.stopped = false;
@@ -149,11 +164,39 @@ export class OpenAIRealtimeClient implements RealtimeClient {
     this.send({
       type: 'response.create',
       response: {
-        instructions: GREETING_INSTRUCTIONS,
+        instructions:
+          this.topic === 'alarm' && this.reminder
+            ? alarmGreetingInstructions(this.reminder)
+            : this.topic === 'meal'
+              ? MEAL_GREETING_INSTRUCTIONS
+              : GREETING_INSTRUCTIONS,
+      },
+    });
+    this.responding = true;
+
+    setActiveAnnouncer((title, message) => this.announce(alarmNotice(title, message)));
+
+    this.ev.onState('listening');
+  }
+
+  /** 대화 중에 일정 시간이 되면 다마가 직접 말로 알려 준다 */
+  private announce(notice: string) {
+    if (this.responding) {
+      this.pendingNotices.push(notice);
+      return;
+    }
+
+    this.send({
+      type: 'conversation.item.create',
+      item: {
+        type: 'message',
+        role: 'system',
+        content: [{ type: 'input_text', text: notice }],
       },
     });
 
-    this.ev.onState('listening');
+    this.send({ type: 'response.create' });
+    this.responding = true;
   }
 
   /**
@@ -226,12 +269,23 @@ export class OpenAIRealtimeClient implements RealtimeClient {
       // --------------------------------------------------
       // Response 전체 완료
       // --------------------------------------------------
-      case 'response.done':
+      case 'response.created':
+        this.responding = true;
+
+        break;
+
+      case 'response.done': {
+        this.responding = false;
+
         if (!this.stopped) {
           this.ev.onState('listening');
         }
 
+        const notice = this.pendingNotices.shift();
+        if (notice) this.announce(notice);
+
         break;
+      }
 
       case 'response.function_call_arguments.done':
         void this.handleFunctionCall(event);
@@ -260,6 +314,125 @@ export class OpenAIRealtimeClient implements RealtimeClient {
     return;
   }
 
+  if (name === 'get_schedules') {
+  try {
+    const schedules = await getSchedules('1');
+
+    const now = Date.now();
+
+    const upcoming = schedules
+      .filter((schedule) => {
+        const time = new Date(schedule.scheduleTime).getTime();
+        return Number.isFinite(time) && time >= now;
+      })
+      .sort(
+        (a, b) =>
+          new Date(a.scheduleTime).getTime() -
+          new Date(b.scheduleTime).getTime(),
+      )
+      .slice(0, 20)
+      .map((schedule) => ({
+        id: schedule.id,
+        title: schedule.title,
+        scheduleTime: schedule.scheduleTime,
+      }));
+
+    this.sendFunctionOutput(callId, {
+      success: true,
+      schedules: upcoming,
+    });
+  } catch (error) {
+    console.error('일정 조회 도구 실행 오류:', error);
+
+    this.sendFunctionOutput(callId, {
+      success: false,
+      message: '일정을 조회하지 못했습니다.',
+    });
+  }
+
+  return;
+}
+
+if (name === 'get_conversation_history') {
+  try {
+
+    if (!rawArguments) {
+      throw new Error('대화 조회 인자가 비어 있습니다.');
+    }
+
+    const parsed = JSON.parse(rawArguments) as {
+      query: string;
+    };
+
+    const query = parsed.query?.trim() ?? '';
+    const conversations = await getConversations('1');
+
+    // 최신 대화부터 최대 5개 선택
+    const recentConversations = [...conversations]
+      .sort(
+        (a, b) =>
+          new Date(b.startedAt).getTime() -
+          new Date(a.startedAt).getTime(),
+      )
+      .slice(0, 5);
+
+    const keywords = query
+      .toLowerCase()
+      .split(/\s+/)
+      .filter((word) => word.length >= 2);
+
+    const messages = recentConversations.flatMap(
+      (conversation) =>
+        conversation.messages.map((message) => ({
+          conversationId: conversation.id,
+          title: conversation.title,
+          role: message.role,
+          content: message.content,
+          createdAt: message.createdAt,
+        })),
+    );
+
+    // 검색어가 없으면 최근 메시지 조회
+    // 검색어가 있으면 내용 또는 대화 제목으로 검색
+    const matchedMessages =
+      keywords.length === 0
+        ? messages
+        : messages.filter((message) => {
+            const text =
+              `${message.title ?? ''} ${message.content}`
+                .toLowerCase();
+
+            return keywords.some((keyword) =>
+              text.includes(keyword),
+            );
+          });
+
+    const resultMessages = matchedMessages
+      .sort(
+        (a, b) =>
+          new Date(a.createdAt).getTime() -
+          new Date(b.createdAt).getTime(),
+      )
+      .slice(-30);
+
+    this.sendFunctionOutput(callId, {
+      success: true,
+      query,
+      found: resultMessages.length > 0,
+      messages: resultMessages,
+    });
+  } catch (error) {
+    console.error('대화 기록 조회 실패:', error);
+
+    this.sendFunctionOutput(callId, {
+      success: false,
+      error: '과거 대화 기록을 조회하지 못했습니다.',
+    });
+  }
+
+  return;
+}
+
   if (name !== 'create_schedule') {
     this.sendFunctionOutput(callId, {
       success: false,
@@ -277,6 +450,7 @@ export class OpenAIRealtimeClient implements RealtimeClient {
       title?: unknown;
       scheduleTime?: unknown;
       rawMessage?: unknown;
+      reminderMessage?: unknown;
     };
 
     if (
@@ -308,6 +482,21 @@ export class OpenAIRealtimeClient implements RealtimeClient {
       scheduleTime: parsedTime.toISOString(),
       rawMessage: args.rawMessage.trim(),
     });
+
+    // 일정 시각이 되면 다마 목소리로 알림
+    if (useAppStore.getState().notificationsEnabled) {
+      const message =
+        typeof args.reminderMessage === 'string' && args.reminderMessage.trim()
+          ? args.reminderMessage.trim()
+          : `어르신, '${schedule.title}' 하실 시간이에요~`;
+
+      scheduleAlarm({
+        id: schedule.id,
+        title: schedule.title,
+        date: schedule.scheduleTime,
+        message,
+      }).catch((error) => console.warn('일정 알림 예약 실패:', error));
+    }
 
     this.sendFunctionOutput(callId, {
       success: true,
@@ -423,6 +612,10 @@ export class OpenAIRealtimeClient implements RealtimeClient {
    * WebRTC / 오디오 리소스 정리
    */
   private cleanup() {
+    setActiveAnnouncer(null);
+    this.pendingNotices = [];
+    this.responding = false;
+
     try {
       this.dc?.close();
     } catch {}

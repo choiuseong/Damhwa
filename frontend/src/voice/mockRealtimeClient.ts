@@ -1,4 +1,4 @@
-import type { RealtimeClient, VoiceEvents } from './types';
+import type { RealtimeClient, VoiceEvents, VoiceTopic } from './types';
 
 const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
@@ -11,13 +11,13 @@ export class MockRealtimeClient implements RealtimeClient {
   private aborted = false;
   private fallbackIdx = 0;
 
-  constructor(private ev: VoiceEvents) {}
+  constructor(private ev: VoiceEvents, private topic?: VoiceTopic) {}
 
   async start() {
     this.stopped = false;
     this.ev.onState('connecting');
     await sleep(400);
-    await this.say('안녕하세요! 오늘 하루는 어떠셨어요?');
+    await this.say(this.topic === 'meal' ? '안녕하세요! 식사는 하셨어요? 오늘은 뭘 드셨어요?' : '안녕하세요! 오늘 하루는 어떠셨어요?');
   }
 
   private async say(text: string) {

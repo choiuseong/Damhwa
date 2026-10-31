@@ -3,14 +3,17 @@ import { router, Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import * as Notifications from 'expo-notifications';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { DialogHost } from '../components/DialogHost';
 import { theme } from '../theme';
 import { useAppStore } from '../store/useAppStore';
 import {
   cancelDailyCheckIn,
+  cancelMealCheckIns,
   configureNotifications,
   ensurePermission,
   registerPushToken,
   scheduleDailyCheckIn,
+  scheduleMealCheckIns,
 } from '../lib/notifications';
 
 configureNotifications();
@@ -21,6 +24,8 @@ export default function RootLayout() {
   const notificationsEnabled = useAppStore((s) => s.notificationsEnabled);
   const checkInMinutes = useAppStore((s) => s.checkInMinutes);
   const setNotificationsEnabled = useAppStore((s) => s.setNotificationsEnabled);
+  const mealCheckInEnabled = useAppStore((s) => s.mealCheckInEnabled);
+  const setMealCheckInEnabled = useAppStore((s) => s.setMealCheckInEnabled);
 
   // 저장된 상태를 다 불러온 뒤에 화면을 그린다
   useEffect(() => {
@@ -45,11 +50,28 @@ export default function RootLayout() {
     })().catch(() => {});
   }, [ready, hasOnboarded, notificationsEnabled, checkInMinutes, setNotificationsEnabled]);
 
+  // 아침·점심·저녁 식사 안부 알림 (다마 목소리)
+  useEffect(() => {
+    if (!ready || !hasOnboarded) return;
+    (async () => {
+      if (mealCheckInEnabled) {
+        if (await ensurePermission()) await scheduleMealCheckIns();
+        else setMealCheckInEnabled(false);
+      } else {
+        await cancelMealCheckIns();
+      }
+    })().catch(() => {});
+  }, [ready, hasOnboarded, mealCheckInEnabled, setMealCheckInEnabled]);
+
   // 알림을 누르면 해당 화면으로 이동
   useEffect(() => {
     const sub = Notifications.addNotificationResponseReceivedListener((response) => {
-      const type = response.notification.request.content.data?.type;
+      const data = response.notification.request.content.data;
+      const type = data?.type;
       if (type === 'checkin') router.push('/voice');
+      else if (type === 'meal') router.push({ pathname: '/voice', params: { topic: 'meal' } });
+      else if (type === 'alarm')
+        router.push({ pathname: '/voice', params: { topic: 'alarm', title: String(data?.title ?? ''), message: String(data?.message ?? '') } });
       else if (type === 'schedule') router.push('/schedule');
     });
     return () => sub.remove();
@@ -79,6 +101,7 @@ export default function RootLayout() {
           options={{ headerShown: true, title: '', headerTintColor: theme.brand, headerShadowVisible: false, headerBackTitle: '뒤로' }}
         />
       </Stack>
+      <DialogHost />
     </SafeAreaProvider>
   );
 }

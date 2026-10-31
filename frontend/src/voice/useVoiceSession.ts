@@ -3,9 +3,9 @@ import { USE_MOCK } from '../api/config';
 import type { TranscriptTurn } from '../types';
 import { MockRealtimeClient } from './mockRealtimeClient';
 import { OpenAIRealtimeClient } from './openaiRealtimeClient';
-import type { RealtimeClient, VoiceEvents, VoiceState } from './types';
+import type { RealtimeClient, VoiceEvents, VoiceReminder, VoiceState, VoiceTopic } from './types';
 
-export function useVoiceSession() {
+export function useVoiceSession(topic?: VoiceTopic, reminder?: VoiceReminder) {
   const [state, setState] = useState<VoiceState>('idle');
   const [userText, setUserText] = useState('');
   const [assistantText, setAssistantText] = useState('');
@@ -53,7 +53,7 @@ export function useVoiceSession() {
       },
     };
 
-    const c: RealtimeClient = USE_MOCK ? new MockRealtimeClient(events) : new OpenAIRealtimeClient(events);
+    const c: RealtimeClient = USE_MOCK ? new MockRealtimeClient(events, topic) : new OpenAIRealtimeClient(events, topic, reminder);
     client.current = c;
     try {
       await c.start();
@@ -64,7 +64,7 @@ export function useVoiceSession() {
         setError(e instanceof Error ? e.message : '연결에 실패했어요.');
       }
     }
-  }, []);
+  }, [topic, reminder]);
 
   useEffect(() => {
     alive.current = true;

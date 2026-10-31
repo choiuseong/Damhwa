@@ -1,6 +1,8 @@
-import { useMemo, useState } from 'react';
+// [변경] 홈 알림 카드에 한 줄 요약
+import { useCallback, useMemo, useState } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
+import * as api from '../../api';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppText } from '../../components/AppText';
@@ -30,6 +32,16 @@ export default function HomeScreen() {
   const [expanded, setExpanded] = useState(false);
   const now = new Date();
 
+  // 사이버 경로당의 안 읽은 글 요약 (서버 모드에서만). 홈으로 돌아올 때마다 새로
+  const [chatSummary, setChatSummary] = useState<api.ChatSummary | null>(null);
+  useFocusEffect(
+    useCallback(() => {
+      let alive = true;
+      api.getChatSummary().then((s) => { if (alive) setChatSummary(s); }).catch(() => {});
+      return () => { alive = false; };
+    }, []),
+  );
+
   const notices = useMemo(() => {
     const now = new Date();
     const result: string[] = [];
@@ -40,8 +52,26 @@ export default function HomeScreen() {
     if (!records.some((r) => isSameDay(new Date(r.date), now))) {
       result.push('다마가 오늘 안부가 궁금해요. 이야기 들려주세요!');
     }
+    // 이웃 채팅방별 새 글
+    for (const r of chatSummary?.rooms ?? []) result.push(`사이버경로당 '${r.title}'에 새 글이 ${r.unread}개 있어요.`);
     return result;
-  }, [schedules, records]);
+  }, [schedules, records, chatSummary]);
+
+  /**
+   * 알림 한 줄 요약: 알림이 여러 개 쌓여도 지금 어떤 상황인지 한 문장으로.
+   * 이웃 글이 있으면 서버 요약(OpenAI 키가 있으면 AI, 없으면 규칙 기반)을, 없으면 일정·안부를 묶어서 보여줌
+   */
+  const oneLine = useMemo(() => {
+    if (notices.length < 2) return null;
+    if (chatSummary && chatSummary.totalUnread > 0) return chatSummary.line;
+    const todayLeft = schedules.filter((s) => isSameDay(new Date(s.date), now) && new Date(s.date) > now).length;
+    const parts = [] as string[];
+    if (todayLeft) parts.push(`오늘 남은 일정이 ${todayLeft}개 있고`);
+    parts.push('다마가 안부를 기다리고 있어요');
+    return `${parts.join(', ')}.`;
+    // now 는 렌더마다 새로 만들어지므로 의존성에서 뺌
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [notices, chatSummary, schedules]);
 
   const upcoming = useMemo(() => {
     const now = new Date();
@@ -187,9 +217,22 @@ export default function HomeScreen() {
             </AppText>
             {notices.length > 0 && <Ionicons name={expanded ? 'chevron-up' : 'chevron-down'} size={18} color={theme.subInk} />}
           </Pressable>
+          {oneLine ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={`한 줄 요약. ${oneLine}`}
+              onPress={() => (chatSummary?.totalUnread ? router.push('/(tabs)/community') : setExpanded((v) => !v))}
+              style={{ flexDirection: 'row', gap: 8, padding: 12, borderRadius: 14, backgroundColor: theme.background }}
+            >
+              <Ionicons name={chatSummary?.source === 'ai' ? 'sparkles' : 'reader-outline'} size={18} color={theme.brand} style={{ marginTop: 2 }} />
+              <AppText variant="callout" style={{ flex: 1 }}>
+                {oneLine}
+              </AppText>
+            </Pressable>
+          ) : null}
           {expanded &&
-            notices.map((n) => (
-              <View key={n} style={{ flexDirection: 'row', gap: 10, paddingLeft: 16 }}>
+            notices.map((n, i) => (
+              <View key={`${i}-${n}`} style={{ flexDirection: 'row', gap: 10, paddingLeft: 16 }}>
                 <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: theme.brand, marginTop: 9 }} />
                 <AppText variant="callout" style={{ flex: 1 }}>
                   {n}

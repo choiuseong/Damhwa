@@ -1,6 +1,8 @@
-import { useEffect, useMemo, useState } from 'react';
+// [변경] 서버 방 목록(탭에 올 때마다 새로), 참여 인원·새 글·가득 참 표시, 방 만들 때 최대 인원
+// [변경] 3차: "내가 방장" 표시
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, TextInput, View } from 'react-native';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as api from '../../api';
@@ -10,6 +12,8 @@ import { PrimaryButton } from '../../components/PrimaryButton';
 import { useNeighborhood } from '../../hooks/useNeighborhood';
 import { useAppStore } from '../../store/useAppStore';
 import { theme } from '../../theme';
+import { USE_MOCK } from '../../api/config';
+import { showDialog } from '../../lib/dialog';
 import type { ChatRoom } from '../../types';
 
 /** PPT '함께하는 사이버 경로당' 왼쪽 폰: 오픈 채팅방 목록 */
@@ -29,12 +33,15 @@ export default function CommunityScreen() {
   }, [request]);
 
   // 서버 모드: 내 위치 반경 2km 안의 방을 불러온다
-  useEffect(() => {
-    api
-      .listRooms(coords ?? undefined)
-      .then((remote) => remote && setRooms(remote))
-      .catch(() => {});
-  }, [coords, setRooms]);
+  // (이 탭으로 돌아올 때마다 다시 불러와서, 다른 이웃이 새로 만든 방도 보이게)
+  useFocusEffect(
+    useCallback(() => {
+      api
+        .listRooms(coords ?? undefined)
+        .then((remote) => remote && setRooms(remote))
+        .catch(() => {});
+    }, [coords, setRooms]),
+  );
 
   const filtered = useMemo(() => (query ? rooms.filter((r) => r.title.includes(query)) : rooms), [rooms, query]);
 
@@ -104,16 +111,37 @@ export default function CommunityScreen() {
       <CreateRoomModal
         visible={showCreate}
         onClose={() => setShowCreate(false)}
-        onCreate={async (title, meets) => {
+        onCreate={async (title, meets, maxMembers) => {
+          if (USE_MOCK) { addRoom(title, meets); return; }
           try {
-            const remote = await api.createRoom(title, meets);
+            // 내 위치를 함께 보내면 반경 2km 이웃에게만 보이는 동네 방이 됨. 최대 인원은 만든 사람이 정함
+            const remote = await api.createRoom(title, meets, coords ?? undefined, maxMembers);
             if (remote) setRooms([...useAppStore.getState().rooms, remote]);
-            else addRoom(title, meets);
           } catch {
-            addRoom(title, meets);
+            // 서버에 없는 방을 만들면 들어가도 대화가 안 되므로, 로컬에 만들지 않고 알려줌
+            showDialog('채팅방을 만들지 못했어요', '서버 연결을 확인하고 다시 만들어 주세요.');
           }
         }}
       />
+    </View>
+  );
+}
+
+/** 참여 인원·최대 인원·새 글 수 (서버에 연결됐을 때만) */
+function RoomInfo({ room }: { room: ChatRoom }) {
+  if (room.memberCount === undefined) return null;
+  const people = room.maxMembers ? `참여 ${room.memberCount}/${room.maxMembers}명` : `참여 ${room.memberCount}명`;
+  const full = !!room.maxMembers && room.memberCount >= room.maxMembers && !room.joined;
+  return (
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+      <AppText variant="subhead" color={full ? theme.listening : theme.subInk}>
+        {full ? `${people} · 가득 참` : room.isOwner ? `${people} · 내가 방장` : room.joined ? `${people} · 참여 중` : people}
+      </AppText>
+      {room.unread ? (
+        <View style={{ paddingHorizontal: 8, paddingVertical: 2, borderRadius: 999, backgroundColor: theme.listening }}>
+          <AppText variant="caption" color="#fff" bold>{`새 글 ${room.unread > 99 ? '99+' : room.unread}`}</AppText>
+        </View>
+      ) : null}
     </View>
   );
 }
@@ -154,6 +182,7 @@ function FeaturedCard({ room, onJoin }: { room: ChatRoom; onJoin: (r: ChatRoom) 
         <AppText variant="callout" color={theme.subInk}>
           {room.meets}
         </AppText>
+        <RoomInfo room={room} />
         <View style={{ marginTop: 4 }}>
           <JoinButton room={room} onJoin={onJoin} />
         </View>
@@ -173,6 +202,7 @@ function CompactCard({ room, onJoin }: { room: ChatRoom; onJoin: (r: ChatRoom) =
         <AppText variant="subhead" color={theme.subInk}>
           {room.meets}
         </AppText>
+        <RoomInfo room={room} />
         <JoinButton room={room} onJoin={onJoin} />
       </View>
     </Card>
@@ -186,21 +216,24 @@ function CreateRoomModal({
 }: {
   visible: boolean;
   onClose: () => void;
-  onCreate: (title: string, meets: string) => Promise<void>;
+  onCreate: (title: string, meets: string, maxMembers: number | null) => Promise<void>;
 }) {
   const insets = useSafeAreaInsets();
   const [title, setTitle] = useState('');
   const [meets, setMeets] = useState('');
+  /** 최대 인원 (null = 제한 없음) */
+  const [maxMembers, setMaxMembers] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
 
   const submit = async () => {
     const t = title.trim();
     if (!t || busy) return;
     setBusy(true);
-    await onCreate(t, meets.trim());
+    await onCreate(t, meets.trim(), maxMembers);
     setBusy(false);
     setTitle('');
     setMeets('');
+    setMaxMembers(null);
     onClose();
   };
 
@@ -220,6 +253,28 @@ function CreateRoomModal({
             모이는 시간 (선택)
           </AppText>
           <TextInput value={meets} onChangeText={setMeets} placeholder="예: 매주 금요일 오전 9:00" placeholderTextColor="#9A9AA0" style={inputStyle} />
+          {USE_MOCK ? null : (
+            <>
+              <AppText variant="subhead" color={theme.subInk}>
+                최대 인원
+              </AppText>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                {[null, 5, 10, 20, 50].map((n) => (
+                  <Pressable
+                    key={String(n)}
+                    accessibilityRole="radio"
+                    accessibilityState={{ checked: maxMembers === n }}
+                    onPress={() => setMaxMembers(n)}
+                    style={{ paddingHorizontal: 14, paddingVertical: 9, borderRadius: 999, backgroundColor: maxMembers === n ? theme.brand : theme.gray }}
+                  >
+                    <AppText variant="subhead" bold color={maxMembers === n ? '#fff' : theme.ink}>
+                      {n === null ? '제한 없음' : `${n}명`}
+                    </AppText>
+                  </Pressable>
+                ))}
+              </View>
+            </>
+          )}
           <View style={{ flexDirection: 'row', gap: 10, marginTop: 6 }}>
             <PrimaryButton title="취소" color={theme.brandDark} onPress={onClose} style={{ flex: 1 }} />
             <PrimaryButton title="만들기" onPress={submit} disabled={!title.trim() || busy} style={{ flex: 1 }} />

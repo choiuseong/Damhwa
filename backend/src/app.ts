@@ -1,4 +1,5 @@
 import express from "express";
+import { createChat } from "./chat";
 import cors from "cors";
 
 import "./events/schedule.handler";
@@ -10,6 +11,7 @@ import scheduleRoutes from "./routes/schedule.routes";
 import realtimeRoutes from "./routes/realtime.routes";
 
 const app = express();
+export const chat = createChat();
 
 app.use(cors());
 app.use(express.json());
@@ -26,5 +28,9 @@ app.use("/conversations", conversationRoutes);
 app.use("/conversations", messageRoutes);
 app.use("/users", scheduleRoutes);
 app.use("/realtime", realtimeRoutes);
+
+app.use("/rooms", chat.router);
+app.use("/uploads", chat.uploads);
+app.use("/admin/chat", chat.adminRouter);
 
 export default app;

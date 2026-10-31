@@ -1,3 +1,6 @@
+// [변경] ChatUser, ChatRoom, ChatMessage, ChatReport, ChatBlock, ChatMember, ChatMessageHide, ChatScheduled, ChatLike 모델 추가
+// [변경] ChatRoom 에 maxMembers, ownerId, notice, closedAt 추가
+// [변경] 4차: ChatRsvp, ChatCheckin 모델
 generator client {
   provider = "prisma-client"
   output   = "../generated/prisma"
@@ -68,4 +71,203 @@ model Schedule {
 enum MessageRole {
   elder
   ai
+}
+
+// ───────── 사이버 경로당 (동네 채팅) ─────────
+// 실제 쿼리는 src/chat 에서 pg 로 직접 실행합니다. (마이그레이션: 20261030000000_cyber_kyungrodang)
+
+model ChatUser {
+  id        BigInt   @id @default(autoincrement())
+  deviceId  String   @unique @db.VarChar(64)
+  nickname  String   @db.VarChar(30)
+  createdAt DateTime @default(now())
+
+  rooms     ChatRoom[]        @relation("creator")
+  messages  ChatMessage[]
+  reports   ChatReport[]
+  blocking  ChatBlock[]       @relation("blocker")
+  blockedBy ChatBlock[]       @relation("blocked")
+  members   ChatMember[]
+  hides     ChatMessageHide[]
+  scheduled ChatScheduled[]
+  ownedRooms ChatRoom[]     @relation("owner")
+  likes      ChatLike[]
+  rsvps      ChatRsvp[]
+  checkins   ChatCheckin[]
+
+  @@map("chat_users")
+}
+
+model ChatRoom {
+  id         String   @id @db.VarChar(64)
+  title      String   @db.VarChar(100)
+  meets      String   @default("언제든 편하게") @db.VarChar(100)
+  icon       String   @default("chatbubbles") @db.VarChar(40)
+  featured   Boolean  @default(false)
+  lat        Float?
+  lng        Float?
+  createdBy  BigInt?
+  createdAt  DateTime @default(now())
+  /// 최대 인원 (null = 제한 없음)
+  maxMembers Int?
+  /// 방장 (만든 사람 → 나가면 먼저 들어온 사람에게 넘어감, 기본 공용 방은 null) — 20261101000000_chat_owner_likes
+  ownerId    BigInt?
+  /// 방장이 쓰는 공지
+  notice     String?   @db.VarChar(200)
+  /// 이웃이 만든 방에 아무도 남지 않아 닫힌 시각
+  closedAt   DateTime?
+
+  creator   ChatUser?       @relation("creator", fields: [createdBy], references: [id], onDelete: SetNull)
+  owner     ChatUser?       @relation("owner", fields: [ownerId], references: [id], onDelete: SetNull)
+  messages  ChatMessage[]
+  members   ChatMember[]
+  scheduled ChatScheduled[]
+  rsvps     ChatRsvp[]
+  checkins  ChatCheckin[]
+
+  @@map("chat_rooms")
+}
+
+model ChatMessage {
+  id        BigInt    @id @default(autoincrement())
+  roomId    String    @db.VarChar(64)
+  userId    BigInt
+  text      String    @db.VarChar(1000)
+  clientId  String    @db.VarChar(64)
+  hidden    Boolean   @default(false)
+  createdAt DateTime  @default(now())
+  /// text | image | sticker | system
+  kind      String    @default("text") @db.VarChar(10)
+  /// 모두에게 삭제한 시각
+  deletedAt DateTime?
+
+  room    ChatRoom          @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  user    ChatUser          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  reports ChatReport[]
+  hides   ChatMessageHide[]
+  likes   ChatLike[]
+
+  @@unique([roomId, userId, clientId])
+  @@index([roomId, id])
+  @@map("chat_messages")
+}
+
+model ChatReport {
+  id         BigInt   @id @default(autoincrement())
+  messageId  BigInt
+  reporterId BigInt
+  reason     String   @db.VarChar(20)
+  detail     String?  @db.VarChar(200)
+  createdAt  DateTime @default(now())
+
+  message  ChatMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  reporter ChatUser    @relation(fields: [reporterId], references: [id], onDelete: Cascade)
+
+  @@unique([messageId, reporterId])
+  @@map("chat_reports")
+}
+
+model ChatBlock {
+  blockerId BigInt
+  blockedId BigInt
+  createdAt DateTime @default(now())
+
+  blocker ChatUser @relation("blocker", fields: [blockerId], references: [id], onDelete: Cascade)
+  blocked ChatUser @relation("blocked", fields: [blockedId], references: [id], onDelete: Cascade)
+
+  @@id([blockerId, blockedId])
+  @@map("chat_blocks")
+}
+
+// 마이그레이션: 20261031000000_chat_features
+model ChatMember {
+  roomId      String    @db.VarChar(64)
+  userId      BigInt
+  joinedAt    DateTime  @default(now())
+  /// 나간 시각 (null = 참여 중)
+  leftAt      DateTime?
+  lastReadId  BigInt    @default(0)
+  /// 이 id 보다 큰 메시지만 보임 (다시 들어온 경우)
+  historyFrom BigInt    @default(0)
+
+  room ChatRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  user ChatUser @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([roomId, userId])
+  @@index([userId])
+  @@map("chat_members")
+}
+
+/// 나에게만 삭제
+model ChatMessageHide {
+  userId    BigInt
+  messageId BigInt
+  createdAt DateTime @default(now())
+
+  user    ChatUser    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  message ChatMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
+
+  @@id([userId, messageId])
+  @@map("chat_message_hides")
+}
+
+/// 예약 전송 (status: pending | sending | sent | canceled)
+model ChatScheduled {
+  id        BigInt   @id @default(autoincrement())
+  roomId    String   @db.VarChar(64)
+  userId    BigInt
+  text      String   @db.VarChar(1000)
+  sendAt    DateTime
+  status    String   @default("pending") @db.VarChar(10)
+  messageId BigInt?
+  createdAt DateTime @default(now())
+
+  room ChatRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  user ChatUser @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([status, sendAt])
+  @@index([userId, roomId])
+  @@map("chat_scheduled")
+}
+
+/// 공감(하트): 한 사람이 한 메시지에 한 번
+model ChatLike {
+  messageId BigInt
+  userId    BigInt
+  createdAt DateTime @default(now())
+
+  message ChatMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  user    ChatUser    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([messageId, userId])
+  @@map("chat_likes")
+}
+
+/// 공지에 대한 참석 답 (yes | no) — 20261102000000_chat_activity
+model ChatRsvp {
+  roomId    String   @db.VarChar(64)
+  userId    BigInt
+  answer    String   @db.VarChar(5)
+  createdAt DateTime @default(now())
+
+  room ChatRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  user ChatUser @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([roomId, userId])
+  @@map("chat_rsvps")
+}
+
+/// 출석 도장 (방마다 하루 한 번)
+model ChatCheckin {
+  roomId    String   @db.VarChar(64)
+  userId    BigInt
+  day       DateTime @db.Date
+  createdAt DateTime @default(now())
+
+  room ChatRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  user ChatUser @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([roomId, userId, day])
+  @@index([roomId, day])
+  @@map("chat_checkins")
 }

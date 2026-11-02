@@ -1,6 +1,7 @@
 // [변경] 새 파일: 채팅방 꾸미기, 예약 메시지 창
 // [변경] 3차: 내 사진 배경, 예약 시간 직접 조절(날짜·오전/오후·시·분), 방 공지 쓰기 창
 // [변경] 4차: 시간 고르기(TimePicker) 공용으로 분리, 방 이름 바꾸기 창, 내 일정에 넣기 창
+// [변경] 병합: 내 일정에 넣기도 음성 일정과 같이 일정 시각에 다마 목소리 알림(scheduleAlarm)
 import { useEffect, useState } from 'react';
 import { Image, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, TextInput, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -9,7 +10,7 @@ import * as api from '../api';
 import { CHAT_THEMES, type ChatThemeKey } from '../lib/chatThemes';
 import { showDialog } from '../lib/dialog';
 import { formatAmPm, formatDay, makeId, relativeDayLabel } from '../lib/format';
-import { scheduleReminder } from '../lib/notifications';
+import { scheduleAlarm } from '../lib/notifications';
 import { extractDay, extractTime } from '../lib/scheduleParser';
 import { USE_MOCK } from '../api/config';
 import { useAppStore } from '../store/useAppStore';
@@ -542,7 +543,7 @@ export function CalendarSheet({ visible, onClose, sourceText }: {
   );
 }
 
-/** 담화 일정에 저장 (서버가 있으면 서버, 없으면 기기) + 30분 전 알림 */
+/** 담화 일정에 저장 (서버가 있으면 서버, 없으면 기기) + 일정 시각에 다마 목소리 알림 (음성 일정과 같은 방식) */
 async function saveToMySchedule(title: string, when: Date, raw: string) {
   const item = { id: makeId(), title, category: '일정' as const, date: when.toISOString() };
   if (USE_MOCK) {
@@ -551,5 +552,7 @@ async function saveToMySchedule(title: string, when: Date, raw: string) {
     const created = await api.createSchedule('1', { title, scheduleTime: when.toISOString(), rawMessage: raw.slice(0, 500) });
     item.id = created.id;
   }
-  if (Platform.OS !== 'web') await scheduleReminder(item).catch(() => {});
+  if (Platform.OS !== 'web' && useAppStore.getState().notificationsEnabled) {
+    await scheduleAlarm({ id: item.id, title, date: item.date, message: `어르신, '${title}' 하실 시간이에요~` }).catch(() => {});
+  }
 }

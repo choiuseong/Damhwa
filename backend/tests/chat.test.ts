@@ -17,6 +17,7 @@ import WebSocket from "ws";
 import { PGlite } from "@electric-sql/pglite";
 import { PGLiteSocketServer } from "@electric-sql/pglite-socket";
 import { createChat } from "../src/chat";
+import { pgliteAssets } from "../scripts/pglite-assets";
 import { createSummary, unsafeSummary } from "../src/chat/summary";
 
 process.env.CHAT_ADMIN_KEY = "test-admin-key-123";
@@ -73,7 +74,7 @@ async function waitFor(cond: () => boolean, ms = 2000) {
 }
 
 before(async () => {
-  db = await PGlite.create();
+  db = await PGlite.create(await pgliteAssets());
   dbServer = new PGLiteSocketServer({ db, port: 0, host: "127.0.0.1", maxConnections: 20 });
   await dbServer.start();
   const port = Number(String(dbServer.getServerConn()).split(":").pop());

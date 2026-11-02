@@ -1,4 +1,5 @@
 // [변경] 새 파일: 설치 없이 쓰는 내장 DB(PGlite), 마이그레이션 자동 적용, 시연용 사용자 1번
+// [변경] 병합: 한글 폴더에서도 켜지도록 PGlite 파일을 직접 넘김 (scripts/pglite-assets.ts)
 /**
  * 설치 없이 쓰는 내장 DB (PGlite: PostgreSQL 을 그대로 담은 가벼운 DB)
  *
@@ -13,6 +14,7 @@ import { readdirSync, readFileSync, existsSync } from "node:fs";
 import path from "node:path";
 import { PGlite } from "@electric-sql/pglite";
 import { PGLiteSocketServer } from "@electric-sql/pglite-socket";
+import { pgliteAssets } from "./pglite-assets";
 
 const ROOT = path.join(__dirname, "..");
 const DATA_DIR = path.join(ROOT, ".localdb");
@@ -20,7 +22,7 @@ const MIGRATIONS = path.join(ROOT, "prisma", "migrations");
 const PORT = Number(process.env.LOCAL_DB_PORT) || 5432;
 
 async function main() {
-  const db = await PGlite.create(DATA_DIR);
+  const db = await PGlite.create(DATA_DIR, await pgliteAssets());
 
   await db.exec(`CREATE TABLE IF NOT EXISTS "_damhwa_local_migrations" (
     "name" TEXT PRIMARY KEY, "appliedAt" TIMESTAMP NOT NULL DEFAULT now())`);

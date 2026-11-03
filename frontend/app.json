@@ -85,8 +85,8 @@
         "expo-image-picker",
         {
           "photosPermission": "사이버경로당에 사진을 보내기 위해 사진첩을 사용해요.",
-          "cameraPermission": false,
-          "microphonePermission": false
+          "cameraPermission": "false",
+          "microphonePermission": "다마와 음성으로 대화하기 위해 마이크를 사용해요."
         }
       ]
     ],

@@ -4,16 +4,17 @@ import {
   getSchedules,
   getConversations,
 } from '../api';
+
 import { scheduleAlarm } from '../lib/notifications';
 import { useAppStore } from '../store/useAppStore';
 import { setActiveAnnouncer } from './activeSession';
+
 import type {
   RealtimeClient,
   VoiceEvents,
   VoiceReminder,
   VoiceTopic,
 } from './types';
-import { PermissionsAndroid, Platform } from 'react-native';
 
 const GREETING_INSTRUCTIONS =
   '반가운 어르신께 전화 드린 손주처럼 밝고 다정한 해요체로 짧게 인사하고, 오늘 하루 어떻게 보내셨는지 한 가지만 가볍게 여쭤보세요. 반말과 상담원 같은 인사말은 쓰지 마세요.';
@@ -31,7 +32,9 @@ type ServerEvent = {
   type: string;
   delta?: string;
   transcript?: string;
-  error?: { message?: string };
+  error?: {
+    message?: string;
+  };
 
   name?: string;
   call_id?: string;
@@ -50,11 +53,26 @@ export class OpenAIRealtimeClient implements RealtimeClient {
   private dc: any = null;
   private localStream: any = null;
   private inCall: any = null;
+
   private assistantBuffer = '';
   private stopped = false;
 
-  /** 다마가 응답하는 중에는 새 응답을 만들 수 없어서, 알림을 잠깐 미뤄 둔다 */
+  /** AI 응답 진행 여부 */
   private responding = false;
+
+  /** 응답 진행 중 추가로 실행해야 할 응답이 있는지 */
+  private queuedResponse = false;
+
+  /** 커밋 확인을 기다리는지 */
+  private waitingForCommit = false;
+
+  /** 마이크 활성화 여부 */
+  private micEnabled = false;
+
+  /** 비동기 도구 실행 중인 개수 */
+  private pendingToolCalls = 0;
+
+  /** 일정 알림 대기열 */
   private pendingNotices: string[] = [];
 
   constructor(
@@ -64,139 +82,62 @@ export class OpenAIRealtimeClient implements RealtimeClient {
   ) {}
 
   async start(): Promise<void> {
-    console.log('[VOICE] start 호출', Date.now());
-
     this.stopped = false;
     this.ev.onState('connecting');
 
+    const {
+      RTCPeerConnection,
+      mediaDevices,
+    } = require('react-native-webrtc') as typeof import('react-native-webrtc');
+
     try {
-      // --------------------------------------------------
-      // 0. WebRTC 모듈 로딩
-      // --------------------------------------------------
-      console.log('[VOICE] react-native-webrtc 모듈 로딩');
+      this.inCall = require('react-native-incall-manager').default;
 
-      const {
-        RTCPeerConnection,
-        mediaDevices,
-      } = require('react-native-webrtc') as typeof import('react-native-webrtc');
+      this.inCall.start({
+        media: 'audio',
+      });
 
-      console.log('[VOICE] react-native-webrtc 모듈 로딩 성공');
+      this.inCall.setForceSpeakerphoneOn(true);
+    } catch {
+      this.inCall = null;
+    }
 
-      // --------------------------------------------------
-      // 0-1. 통화 오디오 설정
-      // --------------------------------------------------
-      try {
-        this.inCall = require('react-native-incall-manager').default;
-
-        this.inCall.start({
-          media: 'audio',
-        });
-
-        this.inCall.setForceSpeakerphoneOn(true);
-
-        console.log('[VOICE] InCallManager 시작 성공');
-      } catch (error) {
-        console.warn('[VOICE] InCallManager 실행 실패:', error);
-        this.inCall = null;
-      }
-
+    try {
       // --------------------------------------------------
       // 1. WebRTC PeerConnection 생성
       // --------------------------------------------------
-      console.log('[VOICE] PeerConnection 생성 시작');
 
       const pc = new RTCPeerConnection();
       this.pc = pc;
 
-      console.log('[VOICE] PeerConnection 생성 성공');
-
-      pc.onconnectionstatechange = () => {
-        console.log(
-          '[VOICE] connectionState:',
-          pc.connectionState,
-        );
-      };
-
-      pc.oniceconnectionstatechange = () => {
-        console.log(
-          '[VOICE] iceConnectionState:',
-          pc.iceConnectionState,
-        );
-      };
-
-      pc.onsignalingstatechange = () => {
-        console.log(
-          '[VOICE] signalingState:',
-          pc.signalingState,
-        );
-      };
-
       // --------------------------------------------------
       // 2. 마이크 권한 및 오디오 스트림 획득
       // --------------------------------------------------
-      console.log('[VOICE] getUserMedia 시작');
 
-// Android 마이크 런타임 권한 요청
-if (Platform.OS === 'android') {
-  const permission = await PermissionsAndroid.request(
-    PermissionsAndroid.PERMISSIONS.RECORD_AUDIO,
-    {
-      title: '마이크 권한 요청',
-      message: '담화에서 음성 대화를 진행하려면 마이크 권한이 필요합니다.',
-      buttonPositive: '허용',
-      buttonNegative: '거부',
-    },
-  );
+      const stream = await mediaDevices.getUserMedia({
+        audio: true,
+        video: false,
+      });
 
-  console.log('[VOICE] 마이크 권한 결과:', permission);
+      this.localStream = stream;
 
-  if (permission !== PermissionsAndroid.RESULTS.GRANTED) {
-    throw new Error('마이크 권한이 허용되지 않았습니다.');
-  }
-}
+      // AI가 먼저 인사하는 동안에는 마이크 비활성화
+      stream.getAudioTracks().forEach((track) => {
+        track.enabled = false;
+        pc.addTrack(track, stream);
+      });
 
-const stream = await mediaDevices.getUserMedia({
-  audio: true,
-  video: false,
-});
-
-console.log('[VOICE] getUserMedia 성공');
-
-this.localStream = stream;
-
-const tracks = stream.getTracks();
-
-console.log('[VOICE] 오디오 트랙 개수:', tracks.length);
-
-tracks.forEach((track) => {
-  console.log('[VOICE] 오디오 트랙 등록:', track.kind);
-  pc.addTrack(track, stream);
-});
-
-console.log('[VOICE] 오디오 트랙 등록 완료');
+      this.micEnabled = false;
 
       // --------------------------------------------------
       // 3. OpenAI Realtime 이벤트용 DataChannel
       // --------------------------------------------------
-      console.log('[VOICE] DataChannel 생성 시작');
 
       const dc = pc.createDataChannel('oai-events');
-
       this.dc = dc;
 
-      console.log('[VOICE] DataChannel 생성 완료');
-
       dc.onopen = () => {
-        console.log('[Realtime] DataChannel OPEN');
         this.onOpen();
-      };
-
-      dc.onclose = () => {
-        console.log('[Realtime] DataChannel CLOSED');
-      };
-
-      dc.onerror = (event: any) => {
-        console.error('[Realtime] DataChannel ERROR:', event);
       };
 
       dc.onmessage = (event: any) => {
@@ -206,79 +147,66 @@ console.log('[VOICE] 오디오 트랙 등록 완료');
       // --------------------------------------------------
       // 4. SDP Offer 생성
       // --------------------------------------------------
-      console.log('[VOICE] SDP Offer 생성 시작');
 
       const offer = await pc.createOffer();
 
-      console.log('[VOICE] SDP Offer 생성 완료');
-
       await pc.setLocalDescription(offer);
-
-      console.log('[VOICE] LocalDescription 설정 완료');
 
       if (!offer.sdp) {
         throw new Error('WebRTC SDP offer 생성에 실패했습니다.');
       }
 
-      console.log('[VOICE] SDP Offer 길이:', offer.sdp.length);
-
       // --------------------------------------------------
       // 5. 백엔드에 SDP Offer 전달
-      //
-      // 프론트 → 우리 백엔드
-      //             ↓
-      //          OpenAI
-      //             ↓
-      // 프론트 ← SDP Answer
       // --------------------------------------------------
-      console.log('[VOICE] Realtime API 요청 시작');
 
       const answerSdp = await createRealtimeSession(offer.sdp);
 
-      console.log('[VOICE] Realtime API 응답 수신');
-      console.log('[VOICE] SDP Answer 길이:', answerSdp?.length);
-
       // --------------------------------------------------
-      // 6. OpenAI가 반환한 SDP Answer 적용
+      // 6. OpenAI SDP Answer 적용
       // --------------------------------------------------
-      console.log('[VOICE] RemoteDescription 설정 시작');
 
       await pc.setRemoteDescription({
         type: 'answer',
         sdp: answerSdp,
       });
-
-      console.log('[VOICE] RemoteDescription 설정 완료');
-      console.log(
-        '[VOICE] 현재 signalingState:',
-        pc.signalingState,
-      );
-
     } catch (error) {
-      console.error('[VOICE] start 실패:', error);
-      console.trace('[VOICE] start 실패 위치');
-
-      console.log('[VOICE] cleanup 시작');
-
       this.cleanup();
-
-      console.log('[VOICE] cleanup 완료');
-
       throw error;
     }
+  }
+
+  /**
+   * 마이크 활성화 / 비활성화
+   */
+  private setMicEnabled(enabled: boolean) {
+    if (this.stopped) return;
+
+    this.localStream?.getAudioTracks().forEach((track: any) => {
+      track.enabled = enabled;
+    });
+
+    this.micEnabled = enabled;
+
+    console.log(
+      '[VOICE] 마이크 상태:',
+      enabled ? '활성화' : '비활성화',
+    );
   }
 
   /**
    * WebRTC DataChannel 연결 완료
    */
   private onOpen() {
-    // 사용자 음성 전사 설정
+    // 수동 발화 모드 설정
+    // 서버 VAD가 자동으로 발화를 종료하거나 응답을 생성하지 않도록 한다.
     this.send({
       type: 'session.update',
       session: {
         type: 'realtime',
         audio: {
           input: {
+            turn_detection: null,
             transcription: {
               model: 'gpt-4o-mini-transcribe',
               language: 'ko',
@@ -288,7 +216,19 @@ console.log('[VOICE] 오디오 트랙 등록 완료');
       },
     });
 
-    // 연결되면 AI가 먼저 인사
+    setActiveAnnouncer((title, message) =>
+      this.announce(alarmNotice(title, message)),
+    );
+  }
+
+  /**
+   * 세션 설정 완료 후 첫 인사
+   */
+  private startGreeting() {
+    if (this.stopped || this.responding) return;
+
+    this.responding = true;
+
     this.send({
       type: 'response.create',
       response: {
@@ -301,18 +241,35 @@ console.log('[VOICE] 오디오 트랙 등록 완료');
       },
     });
 
-    this.responding = true;
-
-    setActiveAnnouncer((title, message) =>
-      this.announce(alarmNotice(title, message)),
-    );
-
-    this.ev.onState('listening');
+    this.ev.onState('thinking');
   }
 
-  /** 대화 중에 일정 시간이 되면 다마가 직접 말로 알려 준다 */
-  private announce(notice: string) {
+  /**
+   * 응답 생성 요청
+   * 이미 응답 중이라면 중복 생성하지 않고 대기시킨다.
+   */
+  private requestResponse() {
+    if (this.stopped) return;
+
     if (this.responding) {
+      this.queuedResponse = true;
+      return;
+    }
+
+    this.responding = true;
+
+    this.send({
+      type: 'response.create',
+    });
+
+    this.ev.onState('thinking');
+  }
+
+  /**
+   * 대화 중에 일정 시간이 되면 다마가 직접 말로 알려 준다.
+   */
+  private announce(notice: string) {
+    if (this.responding || this.pendingToolCalls > 0) {
       this.pendingNotices.push(notice);
       return;
     }
@@ -322,12 +279,62 @@ console.log('[VOICE] 오디오 트랙 등록 완료');
       item: {
         type: 'message',
         role: 'system',
-        content: [{ type: 'input_text', text: notice }],
+        content: [
+          {
+            type: 'input_text',
+            text: notice,
+          },
+        ],
       },
     });
 
-    this.send({ type: 'response.create' });
-    this.responding = true;
+    this.requestResponse();
+  }
+
+  /**
+   * 대기 중인 일정 알림 및 응답 처리
+   */
+  private drainPendingWork() {
+    if (this.stopped || this.responding) return;
+
+    // 비동기 도구 실행이 끝날 때까지 기다린다.
+    if (this.pendingToolCalls > 0) {
+      this.ev.onState('thinking');
+      return;
+    }
+
+    // 일정 알림 우선 처리
+    const notice = this.pendingNotices.shift();
+
+    if (notice) {
+      this.send({
+        type: 'conversation.item.create',
+        item: {
+          type: 'message',
+          role: 'system',
+          content: [
+            {
+              type: 'input_text',
+              text: notice,
+            },
+          ],
+        },
+      });
+
+      this.requestResponse();
+      return;
+    }
+
+    // 대기 중인 도구 응답 등 처리
+    if (this.queuedResponse) {
+      this.queuedResponse = false;
+      this.requestResponse();
+      return;
+    }
+
+    // 처리할 작업이 없으면 사용자 음성 입력 허용
+    this.setMicEnabled(true);
+    this.ev.onState('listening');
   }
 
   /**
@@ -344,22 +351,31 @@ console.log('[VOICE] 오디오 트랙 등록 완료');
 
     switch (event.type) {
       // --------------------------------------------------
-      // 사용자가 말하기 시작
+      // 세션 설정 완료
       // --------------------------------------------------
-      case 'input_audio_buffer.speech_started':
-        this.ev.onState('listening');
+
+      case 'session.updated':
+        console.log('[VOICE] Realtime 세션 설정 완료');
+        this.startGreeting();
         break;
 
       // --------------------------------------------------
-      // 사용자가 말하기 종료
+      // 사용자 음성 입력 커밋 완료
       // --------------------------------------------------
-      case 'input_audio_buffer.speech_stopped':
-        this.ev.onState('thinking');
+
+      case 'input_audio_buffer.committed':
+        if (this.waitingForCommit) {
+          console.log('[VOICE] 오디오 커밋 완료');
+
+          this.waitingForCommit = false;
+          this.requestResponse();
+        }
         break;
 
       // --------------------------------------------------
       // 사용자 음성 → 텍스트
       // --------------------------------------------------
+
       case 'conversation.item.input_audio_transcription.completed':
         if (event.transcript?.trim()) {
           this.ev.onUserTranscript(event.transcript.trim());
@@ -369,6 +385,7 @@ console.log('[VOICE] 오디오 트랙 등록 완료');
       // --------------------------------------------------
       // AI 음성 → 텍스트 스트리밍
       // --------------------------------------------------
+
       case 'response.output_audio_transcript.delta':
       case 'response.audio_transcript.delta':
         this.ev.onState('speaking');
@@ -376,12 +393,12 @@ console.log('[VOICE] 오디오 트랙 등록 완료');
         this.assistantBuffer += event.delta ?? '';
 
         this.ev.onAssistantDelta(event.delta ?? '');
-
         break;
 
       // --------------------------------------------------
-      // AI 응답 완료
+      // AI 응답 자막 완료
       // --------------------------------------------------
+
       case 'response.output_audio_transcript.done':
       case 'response.audio_transcript.done': {
         const full = (
@@ -398,37 +415,56 @@ console.log('[VOICE] 오디오 트랙 등록 완료');
       }
 
       // --------------------------------------------------
-      // Response 전체 완료
+      // Response 전체 생성
       // --------------------------------------------------
+
       case 'response.created':
         this.responding = true;
         break;
 
-      case 'response.done': {
+      // --------------------------------------------------
+      // Response 전체 완료
+      // --------------------------------------------------
+
+      case 'response.done':
+        console.log('[VOICE] AI 응답 완료');
+
         this.responding = false;
+        this.assistantBuffer = '';
 
         if (!this.stopped) {
-          this.ev.onState('listening');
+          this.drainPendingWork();
         }
 
-        const notice = this.pendingNotices.shift();
-        if (notice) this.announce(notice);
-
         break;
-      }
+
+      // --------------------------------------------------
+      // Function Calling
+      // --------------------------------------------------
 
       case 'response.function_call_arguments.done':
+        this.pendingToolCalls += 1;
         void this.handleFunctionCall(event);
         break;
 
       // --------------------------------------------------
       // OpenAI 오류
       // --------------------------------------------------
+
       case 'error':
         console.error(
           '[Realtime] OpenAI 서버 오류:',
           event.error?.message,
         );
+
+        if (this.waitingForCommit) {
+          this.waitingForCommit = false;
+
+          if (!this.stopped) {
+            this.setMicEnabled(true);
+            this.ev.onState('listening');
+          }
+        }
 
         this.ev.onError(
           event.error?.message ??
@@ -439,13 +475,18 @@ console.log('[VOICE] 오디오 트랙 등록 완료');
     }
   }
 
+  /**
+   * Function Calling 처리
+   */
   private async handleFunctionCall(event: ServerEvent) {
     const name = event.name ?? event.item?.name;
     const callId = event.call_id ?? event.item?.call_id;
     const rawArguments = event.arguments ?? event.item?.arguments;
 
     if (!callId || !name) {
+      this.pendingToolCalls = Math.max(0, this.pendingToolCalls - 1);
       this.ev.onError('일정 도구 호출 정보를 확인할 수 없습니다.');
+      this.drainPendingWork();
       return;
     }
 
@@ -653,6 +694,9 @@ console.log('[VOICE] 오디오 트랙 등록 완료');
     }
   }
 
+  /**
+   * Function Calling 결과 전달
+   */
   private sendFunctionOutput(callId: string, result: unknown) {
     this.send({
       type: 'conversation.item.create',
@@ -663,7 +707,9 @@ console.log('[VOICE] 오디오 트랙 등록 완료');
       },
     });
 
-    this.send({ type: 'response.create' });
+    this.pendingToolCalls = Math.max(0, this.pendingToolCalls - 1);
+
+    this.requestResponse();
   }
 
   /**
@@ -676,25 +722,47 @@ console.log('[VOICE] 오디오 트랙 등록 완료');
   }
 
   /**
-   * 현재 음성 입력을 하나의 발화로 확정하고
-   * AI 응답을 요청
+   * 사용자의 발화를 종료하고 AI 응답 요청
    */
   commitTurn() {
-    this.send({
-      type: 'input_audio_buffer.commit',
-    });
+    if (
+      this.stopped ||
+      !this.micEnabled ||
+      this.responding ||
+      this.waitingForCommit
+    ) {
+      return;
+    }
 
-    this.send({
-      type: 'response.create',
-    });
+    console.log('[VOICE] 사용자 발화 종료');
 
+    // 먼저 마이크 입력 중단
+    this.setMicEnabled(false);
+
+    this.waitingForCommit = true;
     this.ev.onState('thinking');
+
+    // WebRTC 오디오 전송이 정리될 시간을 확보한 뒤 커밋한다.
+    // 이후 response.create는 서버의 committed 이벤트를 받은 뒤 실행한다.
+    void (async () => {
+      await new Promise<void>((resolve) => setTimeout(resolve, 250));
+
+      if (this.stopped || !this.waitingForCommit) return;
+
+      console.log('[VOICE] 오디오 버퍼 커밋 요청');
+
+      this.send({
+        type: 'input_audio_buffer.commit',
+      });
+    })();
   }
 
   /**
    * AI 응답 중단
    */
   interrupt() {
+    if (this.stopped) return;
+
     this.send({
       type: 'response.cancel',
     });
@@ -704,7 +772,10 @@ console.log('[VOICE] 오디오 트랙 등록 완료');
     });
 
     this.assistantBuffer = '';
+    this.responding = false;
+    this.queuedResponse = false;
 
+    this.setMicEnabled(true);
     this.ev.onState('listening');
   }
 
@@ -712,7 +783,13 @@ console.log('[VOICE] 오디오 트랙 등록 완료');
    * 텍스트 입력을 Realtime 대화에 전달
    */
   sendText(text: string) {
-    this.ev.onUserTranscript(text);
+    const trimmed = text.trim();
+
+    if (!trimmed || this.stopped || this.responding) return;
+
+    this.setMicEnabled(false);
+
+    this.ev.onUserTranscript(trimmed);
 
     this.send({
       type: 'conversation.item.create',
@@ -722,17 +799,13 @@ console.log('[VOICE] 오디오 트랙 등록 완료');
         content: [
           {
             type: 'input_text',
-            text,
+            text: trimmed,
           },
         ],
       },
     });
 
-    this.send({
-      type: 'response.create',
-    });
-
-    this.ev.onState('thinking');
+    this.requestResponse();
   }
 
   /**
@@ -751,8 +824,13 @@ console.log('[VOICE] 오디오 트랙 등록 완료');
    */
   private cleanup() {
     setActiveAnnouncer(null);
+
     this.pendingNotices = [];
     this.responding = false;
+    this.queuedResponse = false;
+    this.waitingForCommit = false;
+    this.pendingToolCalls = 0;
+    this.micEnabled = false;
 
     try {
       this.dc?.close();
